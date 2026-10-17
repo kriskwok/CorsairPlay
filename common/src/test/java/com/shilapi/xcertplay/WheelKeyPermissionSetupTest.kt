@@ -26,6 +26,7 @@ class WheelKeyPermissionSetupTest {
         context.getSharedPreferences("diplay_navigation_wheel", android.content.Context.MODE_PRIVATE).edit().clear().commit()
         WheelZoomSettings.setEnabled(context, false)
         WheelZoomSettings.setJoystick(context, false)
+        WheelMediaKeySettings.setEnabled(context, false)
         Settings.Secure.putString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, other)
         Settings.Secure.putInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0)
     }

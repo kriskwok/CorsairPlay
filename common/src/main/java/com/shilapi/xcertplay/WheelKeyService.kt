@@ -43,6 +43,7 @@ import com.shilapi.xcertplay.hud.BydOutputSettings
 class WheelKeyService : AccessibilityService() {
     private val keys = WheelZoomKeys()
     private val navigationKeys = NavigationWheelKeyPolicy()
+    private val carPlayMediaPresses = WheelKeyPresses()
     private val joystick = WheelJoystick()
     private val siriKey = WheelSiriKey()
     private val handler = Handler(Looper.getMainLooper())
@@ -62,6 +63,7 @@ class WheelKeyService : AccessibilityService() {
     internal var knob: (AirPlayKnobState) -> Boolean = { CarPlayBackgroundSession.snapshot()?.controller?.sendKnob(it) == true }
     internal var routeActive: () -> Boolean = { CarPlayGlance.snapshot().maneuverType != null }
     internal var requestSiri: () -> Boolean = { CarPlayBackgroundSession.snapshot()?.controller?.requestSiri() == true }
+    internal var sendCarPlayMediaKey: (Int) -> Boolean = { CarPlayMediaKeys.onWheelMediaKey(it) }
 
     // With the auto-off setting the joystick ends a while after the last press and when a route starts,
     // so the keys go back to music and volume without a thought.
@@ -143,6 +145,9 @@ class WheelKeyService : AccessibilityService() {
             val text = WheelKeyLog.writesText(event.keyCode) || runCatching { event.isPrintingKey }.getOrDefault(true)
             val detail = when {
                 text -> null
+                carPlayMediaPresses.hasConsumedPress(
+                    PhysicalWheelKey(event.deviceId, event.keyCode, event.scanCode),
+                ) -> "CarPlay media key"
                 navigationKeys.owns(event.keyCode, event.deviceId, event.downTime) -> "navigation volume"
                 !kept && NavigationWheelKeyPolicy.volumeStep(event.keyCode) != null -> navigationGate().let {
                     "navigation volume not used: ${it.closedBy ?: "stream ${it.stream} did not take the change"}"
@@ -216,7 +221,10 @@ class WheelKeyService : AccessibilityService() {
             },
         )
         when (action) {
-            WheelZoomKeys.Action.PASS -> return navigationKey(event)
+            WheelZoomKeys.Action.PASS -> {
+                if (handleCarPlayMediaKey(event, physicalKey)) return true
+                return navigationKey(event)
+            }
             WheelZoomKeys.Action.CONSUME -> Unit
             WheelZoomKeys.Action.MODE_ON -> announce(zoomOn = true)
             WheelZoomKeys.Action.MODE_OFF -> announce(zoomOn = false)
@@ -225,6 +233,34 @@ class WheelKeyService : AccessibilityService() {
         }
         rearmTimedMode()
         return true
+    }
+
+    /**
+     * Previous/next go to CarPlay only while a phone is connected and no call owns the keys. The
+     * accessibility service sees them before the stock media app, which otherwise keeps them.
+     */
+    private fun handleCarPlayMediaKey(event: KeyEvent, physicalKey: PhysicalWheelKey): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
+        val button = when (event.keyCode) {
+            KeyEvent.KEYCODE_MEDIA_NEXT -> CarPlayMediaButton.NEXT
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> CarPlayMediaButton.PREVIOUS
+            else -> return false
+        }
+        val action = carPlayMediaPresses.filter(
+            physicalKey,
+            event.action == KeyEvent.ACTION_DOWN,
+            event.repeatCount == 0,
+        ) {
+            if (!WheelMediaKeySettings.enabled(this) || session() == null || inCall(this)) {
+                return@filter WheelZoomKeys.Action.PASS
+            }
+            if (sendCarPlayMediaKey(button)) {
+                WheelZoomKeys.Action.CONSUME
+            } else {
+                WheelZoomKeys.Action.PASS
+            }
+        }
+        return action == WheelZoomKeys.Action.CONSUME
     }
 
     private fun navigationKey(event: KeyEvent): Boolean = navigationKeys.onKey(
@@ -501,6 +537,7 @@ class WheelKeyService : AccessibilityService() {
          * watcher for other apps' calls, which runs only while something keeps DiPlay alive.
          */
         internal fun wanted(context: Context): Boolean = WheelZoomSettings.anyEnabled(context) ||
+            WheelMediaKeySettings.enabled(context) ||
             BydOutputSettings.carPlayCallControls(context) || NavigationWheelSettings.restoreAllowed(context) ||
             BydOutputSettings.phoneAudioRouteApps(context)
 

@@ -3987,9 +3987,19 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         // The joystick and map zoom use BYD's media and custom keys.
         val byd = CarHotspotSetup.isBydHeadUnit(this)
         val zoomAvailable = wheelMapZoomAvailable()
+        val mediaKeysOn = WheelMediaKeySettings.enabled(this)
         val vehicleKeysOn = WheelZoomSettings.joystick(this) ||
-            (zoomAvailable && WheelZoomSettings.enabled(this))
+            (zoomAvailable && WheelZoomSettings.enabled(this)) || mediaKeysOn
         if (WheelZoomSettings.siriKey(this) || vehicleKeysOn) wheelKeyServiceControls(card)
+        toggle(
+            card,
+            getString(R.string.settings_carplay_media_keys),
+            getString(R.string.settings_carplay_media_keys_description),
+            mediaKeysOn,
+        ) {
+            WheelMediaKeySettings.setEnabled(this, it)
+            render()
+        }
         siriKeyControls(card)
         // It acts on BYD's short voice keys (327, 304) only, which other head units never send. Once on it
         // stays reachable, like the controls below, in case the package check misses the car.

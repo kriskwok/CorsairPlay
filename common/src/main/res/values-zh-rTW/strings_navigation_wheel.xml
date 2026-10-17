@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_carplay_media_keys">上一曲/下一曲控制 CarPlay</string>
+    <string name="settings_carplay_media_keys_description">CarPlay 連接後，方向盤和中控的上一曲/下一曲優先控制 iPhone，不再觸發原車媒體 App；通話時仍按原車邏輯。需要方向盤按鍵無障礙服務。</string>
     <string name="settings_navigation_wheel_volume">導航播報時方向盤調節導航音量（實驗性）</string>
     <string name="settings_navigation_wheel_volume_description">CarPlay 導航播報期間，音量鍵調節所選導航音訊串流；其他時候按車機原有方式處理。需要方向盤按鍵無障礙權限。通話、地圖縮放和搖桿保持優先。已在唐平台 21 車機本地驗證，上游版本仍待實車測試；不攔截自動或媒體音訊路由。</string>
     <string name="settings_navigation_wheel_service_required">請在 Android 設定中允許方向盤按鍵無障礙服務，或使用現有 ADB 授權按鈕。</string>

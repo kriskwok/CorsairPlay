@@ -30,6 +30,8 @@ class UpdateVersionTest {
     fun preReleaseSuffixStillComparesByNumbers() {
         assertTrue(UpdateVersion.isNewer("0.2.15-beta.1", "0.2.14"))
         assertFalse(UpdateVersion.isNewer("0.2.14-rc.1", "0.2.14"))
+        assertTrue(UpdateVersion.isNewer("0.2.25-rc1", "0.2.24"))
+        assertFalse(UpdateVersion.isNewer("0.2.24-rc1", "0.2.24"))
     }
 
     @Test
