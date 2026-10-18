@@ -101,7 +101,7 @@ class CarHotspotSwitchTest {
         assertFalse(CarHotspotSettings.enabled(activity))
         assertFalse(hotspotSwitch().isChecked)
         assertTrue(hotspotSwitch().isEnabled)
-        assertEquals(activity.getString(R.string.adb_not_approved), ShadowToast.getTextOfLatestToast())
+        assertEquals(VehicleBranding.text(activity, R.string.adb_not_approved), ShadowToast.getTextOfLatestToast())
     }
 
     @Test fun adbSuccessWithoutActualPermissionDoesNotEnableTheSwitch() {

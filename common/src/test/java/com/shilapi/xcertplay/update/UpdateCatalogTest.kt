@@ -24,6 +24,7 @@ class UpdateCatalogTest {
             "tag_name": "v0.2.14",
             "draft": false,
             "prerelease": true,
+            "body": "### Fixed\n- Release notes are visible",
             "assets": [
               {"name": "DiPlay-0.2.14.apk", "browser_download_url": "https://github.com/shihabal3amri/DiPlay/releases/download/v0.2.14/DiPlay-0.2.14.apk"},
               {"name": "SHA256SUMS.txt", "browser_download_url": "https://github.com/shihabal3amri/DiPlay/releases/download/v0.2.14/SHA256SUMS.txt"}
@@ -45,6 +46,7 @@ class UpdateCatalogTest {
             "https://github.com/shihabal3amri/DiPlay/releases/download/v0.2.14/SHA256SUMS.txt",
             release?.checksumsUrl,
         )
+        assertEquals("### Fixed\n- Release notes are visible", release?.releaseNotes)
     }
 
     @Test
@@ -74,5 +76,33 @@ class UpdateCatalogTest {
     @Test
     fun returnsNullForAnEmptyReleaseList() {
         assertNull(UpdateCatalog.parse("[]"))
+    }
+
+    @Test
+    fun historyReturnsEveryDownloadableReleaseAndSkipsInvalidOnes() {
+        val json = """
+            [
+              {"tag_name": "v0.2.15", "draft": false, "assets": [
+                {"name": "CorsairPlay-0.2.15.apk", "browser_download_url": "https://example.com/v15.apk"},
+                {"name": "SHA256SUMS.txt", "browser_download_url": "https://example.com/v15.sum"}
+              ]},
+              {"tag_name": "v0.2.14", "draft": false, "assets": [
+                {"name": "source.zip", "browser_download_url": "https://example.com/source.zip"}
+              ]},
+              {"tag_name": "v0.2.13", "draft": true, "assets": [
+                {"name": "CorsairPlay-0.2.13.apk", "browser_download_url": "https://example.com/v13.apk"},
+                {"name": "SHA256SUMS.txt", "browser_download_url": "https://example.com/v13.sum"}
+              ]},
+              {"tag_name": "v0.2.12", "draft": false, "assets": [
+                {"name": "CorsairPlay-0.2.12.apk", "browser_download_url": "https://example.com/v12.apk"},
+                {"name": "SHA256SUMS.txt", "browser_download_url": "https://example.com/v12.sum"}
+              ]}
+            ]
+        """.trimIndent()
+
+        assertEquals(
+            listOf("v0.2.15", "v0.2.12"),
+            UpdateCatalog.parseAll(json).map { it.tagName },
+        )
     }
 }

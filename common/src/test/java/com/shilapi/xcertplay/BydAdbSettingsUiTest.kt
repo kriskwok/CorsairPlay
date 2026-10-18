@@ -75,7 +75,7 @@ class BydAdbSettingsUiTest {
     @Test fun unapprovedHotspotStillShowsItsOptInAndVehicleSettingsRemainAvailable() {
         render(LocalAdb.Access.NOT_APPROVED)
         assertEquals(View.VISIBLE, controls.visibility)
-        assertTrue(labels(controls).contains(activity.getString(R.string.adb_not_approved)))
+        assertTrue(labels(controls).contains(VehicleBranding.text(activity, R.string.adb_not_approved)))
         assertEquals(1, switches(controls).size)
         assertTrue(labels(advancedVehicleData()).contains(activity.getString(R.string.check_adb_access)))
     }

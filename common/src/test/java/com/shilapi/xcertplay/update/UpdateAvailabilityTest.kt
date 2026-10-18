@@ -72,5 +72,6 @@ class UpdateAvailabilityTest {
         apkName = "DiPlay-$tag.apk",
         apkUrl = "https://example.com/DiPlay-$tag.apk",
         checksumsUrl = "https://example.com/SHA256SUMS.txt",
+        releaseNotes = "Changes for $tag",
     )
 }

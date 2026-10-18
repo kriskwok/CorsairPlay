@@ -41,6 +41,8 @@ object CarPlayGlance {
          * music apps put the per-line lyric in the title field and the song name in the artist.
          */
         val songTitle: String? = null,
+        /** The separate iAP2 artist field. QQ Music and similar apps put the song name here. */
+        val songArtist: String? = null,
         val playing: Boolean = false,
     )
 
@@ -127,6 +129,7 @@ object CarPlayGlance {
             remainingMeters = maneuver?.remainingMeters,
             song = current?.text,
             songTitle = current?.line,
+            songArtist = current?.artist,
             playing = current?.playing ?: false,
         )
         if (next == last) return null

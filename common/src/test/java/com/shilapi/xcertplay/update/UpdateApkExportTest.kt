@@ -1,9 +1,9 @@
 package com.shilapi.xcertplay.update
 
 import android.content.Context
+import android.os.Environment
 import java.io.File
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
 class UpdateApkExportTest {
     private val context: Context = RuntimeEnvironment.getApplication()
 
-    @Test fun copiesTheApkAndKeepsOnlyTheNewestOne() {
+    @Test fun copiesTheApkAndKeepsDownloadedVersions() {
         val directory = File(context.getExternalFilesDir(null), "update").apply { mkdirs() }
         File(directory, "DiPlay-0.2.14.apk").writeText("old")
         val apk = File(context.cacheDir, "DiPlay-0.2.15.apk").apply { writeText("new") }
@@ -29,7 +29,22 @@ class UpdateApkExportTest {
         assertEquals(File(directory, "DiPlay-0.2.15.apk").absolutePath, path)
         assertEquals("new", File(path).readText())
         assertNull(saved.uri)
-        assertFalse(File(directory, "DiPlay-0.2.14.apk").exists())
+        assertTrue(File(directory, "DiPlay-0.2.14.apk").exists())
         assertTrue(apk.exists())
+    }
+
+    @Test fun historicalCopyUsesSystemDownloadsAndKeepsOtherVersions() {
+        val directory = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Lincoln",
+        ).apply { mkdirs() }
+        val older = File(directory, "CorsairPlay-0.2.20.apk").apply { writeText("older") }
+        val apk = File(context.cacheDir, "CorsairPlay-0.2.24.apk").apply { writeText("new") }
+
+        val saved = UpdateApkExport.copyToSystemDownloads(context, apk)
+
+        assertEquals(File(directory, apk.name).absolutePath, saved.path)
+        assertEquals("new", File(saved.path).readText())
+        assertTrue(older.exists())
     }
 }

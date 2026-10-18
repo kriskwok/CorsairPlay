@@ -77,7 +77,7 @@
     <string name="status_attaching_ncm">Conectando la red NCM/AirPlay</string>
     <string name="status_failed">Error: %1$s</string>
     <string name="msg_car_hotspot_off">El punto de acceso del coche «%1$s» está apagado. Actívalo en la configuración del coche antes de conectarte.</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">Elegir iPhone ·\u0020</string>
     <string name="audio_saved_value">Guardado: %1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -99,7 +99,7 @@
     <string name="a_familiar_drive">Un trayecto familiar.</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">Hay una conexión Wi-Fi Direct anterior todavía en ejecución. Restablécela para conectarte.</string>
     <string name="about">Acerca de</string>
-    <string name="about_diplay">Acerca de Lincoln</string>
+    <string name="about_diplay">Acerca de CorsairPlay</string>
     <string name="active">Activo</string>
     <string name="advanced_audio_channel_mapping">Asignación avanzada de canales de audio</string>
     <string name="airplay_icon">Icono de AirPlay</string>
@@ -124,7 +124,7 @@
     <string name="automatic_map_setup_adb">Configuración automática del mapa · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">La disponibilidad depende de los ajustes de inicio de tu unidad principal.</string>
     <string name="back">Atrás</string>
-    <string name="back_to_diplay">Volver a Lincoln</string>
+    <string name="back_to_diplay">Volver a CorsairPlay</string>
     <string name="band">Banda</string>
     <string name="bluetooth_settings">Ajustes de Bluetooth</string>
     <string name="byd_navigation">Navegación BYD</string>
@@ -677,6 +677,10 @@
     <string name="car_button_icon">Icono</string>
     <string name="car_button_icon_custom">Icono personalizado</string>
     <string name="car_button_name">Nombre</string>
+    <string name="car_button_vehicle_brand">Marca del vehículo</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">Personalizado</string>
     <string name="car_button_description">CarPlay muestra este icono y este nombre en su lista de apps. Tócalo para volver a la pantalla del coche. Los cambios se aplican la próxima vez que CarPlay se conecte.</string>
     <string name="car_button_saved_next_connection">Guardado. CarPlay mostrará el nuevo icono y nombre la próxima vez que se conecte.</string>
     <string name="this_head_unit_has_no_image_picker">Esta unidad principal no tiene selector de imágenes.</string>
@@ -885,4 +889,11 @@
     <string name="settings_lincoln_cluster_remaining">Distancia y tiempo restantes en el cuadro (experimental)</string>
     <string name="settings_lincoln_cluster_remaining_description">Envía además la distancia y el tiempo totales restantes. El cuadro probado ignora los campos desconocidos, así que solo es útil cuando una sonda confirme los nombres de campo que acepta tu cuadro.</string>
     <string name="settings_lincoln_cluster_status">App del cuadro: %1$s\n%2$s</string>
+    <string name="settings_microphone_without_48khz">Micrófono: no ofrecer 48 kHz (experimental)</string>
+    <string name="settings_microphone_without_48khz_description">Las notas de voz y las llamadas de WeChat pueden grabarse en silencio cuando el iPhone abre un flujo de micrófono de 48 kHz, mientras que Siri y las llamadas funcionan a frecuencias menores. Esto deja 32 kHz como la frecuencia máxima ofrecida para que el iPhone negocie una menor. Vuelve a conectar CarPlay.</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">Volver a %1$s</string>
+    <string name="settings_carplay_corner_radius_description">Redondea las esquinas de la imagen de CarPlay sobre el fondo de color uniforme de la unidad. Desactivado mantiene las esquinas rectas.</string>
+    <string name="settings_carplay_corner_radius_off">Desactivado</string>
+    <string name="settings_carplay_corner_radius">Radio de las esquinas de CarPlay</string>
 </resources>

@@ -2,6 +2,7 @@ package com.shilapi.xcertplay
 
 import android.media.AudioManager
 import android.os.Looper
+import android.view.KeyEvent
 import android.view.Surface
 import com.shilapi.xcertplay.compat.AudioFocusRequestCompat
 import com.shilapi.xcertplay.media.AndroidMediaSink
@@ -183,6 +184,108 @@ class CarPlayMediaFocusForwardingTest {
         assertEquals(7, audio.getStreamVolume(AudioManager.STREAM_MUSIC))
     }
 
+    @Test fun permanentFocusLossPausesPlaybackWithoutImmediatelyStealingItBack() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
+        val listener = start(controller, sink)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
+        shadowOf(Looper.getMainLooper()).idleFor(200, TimeUnit.MILLISECONDS)
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PAUSE)
+        verify(controller, never()).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PLAY)
+    }
+
+    @Test fun mediaButtonBroadcastRoutesNextAndPreviousToCarPlay() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
+        start(controller, sink)
+
+        assertTrue(CarPlayMediaKeys.onMediaButtonBroadcast(
+            KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT),
+        ))
+        assertTrue(CarPlayMediaKeys.onMediaButtonBroadcast(
+            KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT),
+        ))
+        assertTrue(CarPlayMediaKeys.onMediaButtonBroadcast(
+            KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PREVIOUS),
+        ))
+
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.NEXT)
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PREVIOUS)
+    }
+
+    @Test fun homeCardToggleRoutesPlayPauseToCarPlay() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
+        start(controller, sink)
+
+        assertTrue(CarPlayMediaKeys.onHomeCardToggle())
+
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PLAY_PAUSE)
+    }
+
+    @Test fun homeCardNextRoutesNextToCarPlay() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
+        start(controller, sink)
+
+        assertTrue(CarPlayMediaKeys.onHomeCardNext())
+
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.NEXT)
+    }
+
+    @Test fun audioOffFocusCycleResumesOnlyCarPlayThatWasPlayingBeforeTheKey() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
+        val listener = start(controller, sink)
+
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
+        shadowOf(Looper.getMainLooper()).idleFor(200, TimeUnit.MILLISECONDS)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        shadowOf(Looper.getMainLooper()).idleFor(400, TimeUnit.MILLISECONDS)
+
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PAUSE)
+        verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PLAY)
+    }
+
+    @Test fun audioOffFocusCycleLeavesCarPlayPausedWhenTheCarSourceWasPlaying() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
+        val listener = start(controller, sink)
+        CarPlayMediaKeys.onMediaAudioChanged(false)
+        shadowOf(Looper.getMainLooper()).idle()
+        clearInvocations(controller)
+
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        shadowOf(Looper.getMainLooper()).idleFor(500, TimeUnit.MILLISECONDS)
+
+        verify(controller, never()).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PLAY)
+    }
+
+    @Test fun staleMediaStreamDoesNotRouteKeysToPausedCarPlay() {
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        val sink = spy(AndroidMediaSink()).also(sinks::add)
+        val listener = start(controller, sink)
+        setNowPlaying(CarPlayNowPlaying(title = "Paused song", elapsedMillis = 1_000, playing = false))
+        clearInvocations(controller)
+
+        assertFalse(CarPlayMediaKeys.isPlaying())
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        shadowOf(Looper.getMainLooper()).idleFor(500, TimeUnit.MILLISECONDS)
+
+        verify(controller, never()).sendMediaButton(anyInt())
+    }
+
     private fun start(controller: CarPlayController, sink: AndroidMediaSink,
         clearInitialGrant: Boolean = true): AudioManager.OnAudioFocusChangeListener {
         `when`(controller.nowPlayingSnapshot()).thenReturn(CarPlayNowPlaying())
@@ -194,5 +297,10 @@ class CarPlayMediaFocusForwardingTest {
         if (clearInitialGrant) clearInvocations(sink)
         val request = ReflectionHelpers.getField<AudioFocusRequestCompat>(CarPlayMediaKeys, "focusRequest")
         return ReflectionHelpers.getField(request, "listener")
+    }
+
+    private fun setNowPlaying(value: CarPlayNowPlaying) {
+        CarPlayMediaKeys::class.java.getDeclaredField("nowPlaying")
+            .apply { isAccessible = true }.set(CarPlayMediaKeys, value)
     }
 }

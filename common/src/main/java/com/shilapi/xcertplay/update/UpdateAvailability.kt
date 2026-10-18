@@ -9,6 +9,7 @@ internal object UpdateAvailability {
     private const val APK_NAME = "apk_name"
     private const val APK_URL = "apk_url"
     private const val CHECKSUMS_URL = "checksums_url"
+    private const val RELEASE_NOTES = "release_notes"
     private const val LAST_ATTEMPT_MILLIS = "last_attempt_millis"
     private const val BACKGROUND_CHECKS = "background_checks"
     private const val LAST_RESULT = "last_result"
@@ -35,6 +36,7 @@ internal object UpdateAvailability {
             apkName = values.getString(APK_NAME, null) ?: return null,
             apkUrl = values.getString(APK_URL, null) ?: return null,
             checksumsUrl = values.getString(CHECKSUMS_URL, null) ?: return null,
+            releaseNotes = values.getString(RELEASE_NOTES, "").orEmpty(),
         )
         if (UpdateVersion.isNewer(release.tagName, installedVersion)) return release
         clear(context)
@@ -47,6 +49,7 @@ internal object UpdateAvailability {
             .putString(APK_NAME, release.apkName)
             .putString(APK_URL, release.apkUrl)
             .putString(CHECKSUMS_URL, release.checksumsUrl)
+            .putString(RELEASE_NOTES, release.releaseNotes)
             .apply()
     }
 
@@ -56,6 +59,7 @@ internal object UpdateAvailability {
             .remove(APK_NAME)
             .remove(APK_URL)
             .remove(CHECKSUMS_URL)
+            .remove(RELEASE_NOTES)
             .apply()
     }
 

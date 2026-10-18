@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Lincoln</string>
+    <string name="app_name">CorsairPlay</string>
     <string name="language_section_title">言語</string>
     <string name="language_app_language">アプリの言語</string>
     <string name="language_system_default">システムの設定に従う</string>
@@ -82,7 +82,7 @@
     <string name="status_attaching_ncm">NCM/AirPlayネットワークに接続しています</string>
     <string name="status_failed">失敗：%1$s</string>
     <string name="msg_car_hotspot_off">車載ホットスポット「%1$s」がオフです。接続前に車の設定でオンにしてください。</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">iPhoneを選択 ·\u0020</string>
     <string name="audio_saved_value">保存済み：%1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -99,7 +99,7 @@
     <string name="a_familiar_drive">いつもの操作を車でも。</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">以前のWi-Fi Direct接続が残っています。接続するにはリセットしてください。</string>
     <string name="about">アプリ情報</string>
-    <string name="about_diplay">Lincolnについて</string>
+    <string name="about_diplay">CorsairPlayについて</string>
     <string name="active">有効</string>
     <string name="advanced_audio_channel_mapping">高度な音声チャンネル設定</string>
     <string name="airplay_icon">AirPlayアイコン</string>
@@ -127,7 +127,7 @@
     <string name="automatic_map_setup_adb">地図の自動設定 · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">利用可否は車載端末の起動設定によって異なります。</string>
     <string name="back">戻る</string>
-    <string name="back_to_diplay">Lincolnに戻る</string>
+    <string name="back_to_diplay">CorsairPlayに戻る</string>
     <string name="band">周波数帯</string>
     <string name="bluetooth_settings">Bluetooth設定</string>
     <string name="byd_navigation">BYDナビゲーション</string>
@@ -192,7 +192,7 @@
     <string name="default_placeholder_icon">標準の仮アイコン</string>
     <string name="diagnostic_report_saved">診断レポートを保存しました</string>
     <string name="diagnostics">診断</string>
-    <string name="diplay">Lincoln</string>
+    <string name="diplay">CorsairPlay</string>
     <string name="discard_changes_and_exit_settings">変更を破棄して設定を終了</string>
     <string name="disconnect">切断</string>
     <string name="discovering_iphone">iPhoneを検索しています</string>
@@ -251,6 +251,8 @@
     <string name="loading_image">画像を読み込んでいます</string>
     <string name="local_offline">ローカル／オフライン</string>
     <string name="localonlyhotspot">LocalOnlyHotspot</string>
+    <string name="settings_microphone_without_48khz">マイク：48 kHz を提供しない（実験的機能）</string>
+    <string name="settings_microphone_without_48khz_description">iPhone が 48 kHz のマイクストリームを開くと、WeChat の音声メッセージや通話が無音で録音されることがあります。Siri と電話はより低いレートでは正常に動作します。マイクで提供する最高レートを 32 kHz に下げ、iPhone がそれ以下のレートを選ぶようにします。CarPlay を再接続します。</string>
     <string name="location">位置情報</string>
     <string name="longest_height">最大高さ</string>
     <string name="looking_for_your_paired_iphone">ペアリング済みのiPhoneを探しています…</string>
@@ -781,6 +783,10 @@
     <string name="car_button_icon">アイコン</string>
     <string name="car_button_icon_custom">カスタムアイコン</string>
     <string name="car_button_name">名前</string>
+    <string name="car_button_vehicle_brand">車両ブランド</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">カスタム</string>
     <string name="car_button_description">このアイコンと名前がCarPlayのアプリ一覧に表示されます。タップすると車の画面に戻ります。変更は次回CarPlay接続時から有効です。</string>
     <string name="car_button_saved_next_connection">保存しました。新しいアイコンと名前は次回のCarPlay接続時に表示されます。</string>
     <string name="this_head_unit_has_no_image_picker">この車載端末には画像選択機能がありません。</string>
@@ -853,6 +859,19 @@
     <string name="update_failed">更新に失敗しました</string>
     <string name="update_available_home">更新が利用できます</string>
     <string name="update_saved_to">%1$sに保存しました</string>
+    <string name="update_history_download">過去のバージョンをダウンロード</string>
+    <string name="update_history_checking">バージョンを読み込み中…</string>
+    <string name="update_history_empty">ダウンロードできる過去のバージョンはありません。</string>
+    <string name="update_history_failed">過去のバージョンを読み込めませんでした。</string>
+    <string name="update_history_title">過去のバージョン</string>
+    <string name="update_history_confirm">%1$s をシステムのダウンロードフォルダーにダウンロードしますか？インストールや現在のバージョンの変更は行いません。</string>
+    <string name="update_history_notes_title">更新内容</string>
+    <string name="update_history_notes_missing">このバージョンの更新内容はありません。</string>
+    <string name="update_history_action">ダウンロード</string>
+    <string name="update_history_downloading">過去のバージョンをダウンロード中 · %1$d%%</string>
+    <string name="update_history_verifying">過去のバージョンの APK を確認中…</string>
+    <string name="update_history_saved_title">ダウンロード完了</string>
+    <string name="update_history_permission_denied">システムのダウンロードフォルダーに保存するにはストレージ権限が必要です。</string>
     <string name="backup_title">設定をバックアップ</string>
     <string name="backup_open">スマートフォンからバックアップ／復元</string>
     <string name="backup_open_description">QRコードを表示します。同じネットワーク上のスマートフォンからブラウザーでLincolnの設定を書き出したり、取り込んだりできます。この画面を離れるとサービスは停止します。</string>
@@ -987,4 +1006,9 @@
     <string name="settings_lincoln_cluster_remaining">メーターの残距離・残時間（実験的）</string>
     <string name="settings_lincoln_cluster_remaining_description">残りの総距離と時間も送ります。検証済みのメーターは未知のフィールドを無視するため、お使いのメーターが受け付けるフィールド名を確認できてから意味があります。</string>
     <string name="settings_lincoln_cluster_status">メーターアプリ: %1$s\n%2$s</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">%1$sに戻る</string>
+    <string name="settings_carplay_corner_radius_description">ヘッドユニットの単色背景に合わせてCarPlay映像の角を丸くします。オフでは四角のままです。</string>
+    <string name="settings_carplay_corner_radius_off">オフ</string>
+    <string name="settings_carplay_corner_radius">CarPlayの角の丸み</string>
 </resources>

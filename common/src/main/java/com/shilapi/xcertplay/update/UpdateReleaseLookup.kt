@@ -18,4 +18,17 @@ internal object UpdateReleaseLookup {
         val release = UpdateCatalog.parse(json) ?: return null
         return release.takeIf { UpdateVersion.isNewer(it.tagName, installedVersion) }
     }
+
+    fun history(
+        userAgent: String,
+        openConnection: (URL) -> URLConnection = { it.openConnection() },
+    ): List<UpdateRelease> {
+        val json = UpdateClient.fetchText(
+            UpdateClient.RELEASES_URL,
+            "application/vnd.github+json",
+            userAgent,
+            openConnection,
+        )
+        return UpdateCatalog.parseAll(json)
+    }
 }

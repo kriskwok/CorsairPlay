@@ -48,6 +48,7 @@ class WheelMediaKeyWindowTest {
         `when`(controller.sendMediaButton(anyInt())).thenReturn(true)
         field("controller", controller)
         field("activeAirPlaySession", mock(AirPlaySession::class.java))
+        setCarPlayPlaying(true)
     }
 
     @After fun tearDown() {
@@ -58,6 +59,7 @@ class WheelMediaKeyWindowTest {
             .removeCallbacksAndMessages(null)
         BydCarPlayCall.end()
         CarPlayBackgroundSession.clear()
+        setCarPlayPlaying(false)
         host.getSharedPreferences("xcertplay_airplay", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
@@ -66,6 +68,14 @@ class WheelMediaKeyWindowTest {
         verify(controller).sendMediaButton(CarPlayMediaButton.NEXT)
         assertTrue(host.dispatchKeyEvent(key(KeyEvent.KEYCODE_MEDIA_PREVIOUS, true)))
         verify(controller).sendMediaButton(CarPlayMediaButton.PREVIOUS)
+        assertTrue(host.dispatchKeyEvent(key(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_RIGHT, true)))
+        verify(controller, times(2)).sendMediaButton(CarPlayMediaButton.NEXT)
+        assertTrue(host.dispatchKeyEvent(key(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_LEFT, true)))
+        verify(controller, times(2)).sendMediaButton(CarPlayMediaButton.PREVIOUS)
+        assertTrue(host.dispatchKeyEvent(key(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_NEXT, true)))
+        verify(controller, times(3)).sendMediaButton(CarPlayMediaButton.NEXT)
+        assertTrue(host.dispatchKeyEvent(key(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_PREVIOUS, true)))
+        verify(controller, times(3)).sendMediaButton(CarPlayMediaButton.PREVIOUS)
     }
 
     @Test fun oneTapSendsOnePress() {
@@ -100,10 +110,22 @@ class WheelMediaKeyWindowTest {
         verify(controller, never()).sendMediaButton(anyInt())
     }
 
+    @Test fun pausedCarPlayLeavesTrackKeysToTheStockMediaApp() {
+        setCarPlayPlaying(false)
+        assertFalse(host.dispatchKeyEvent(key(KeyEvent.KEYCODE_MEDIA_NEXT, true)))
+        assertFalse(host.dispatchKeyEvent(key(KeyEvent.KEYCODE_MEDIA_PREVIOUS, true)))
+        verify(controller, never()).sendMediaButton(anyInt())
+    }
+
     private fun field(name: String, value: Any?) = host.javaClass.getDeclaredField(name)
         .apply { isAccessible = true }.set(host, value)
 
     private fun key(code: Int, down: Boolean, repeat: Int = 0) =
         KeyEvent(1_000, 1_000, if (down) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP,
             code, repeat, 0, -1, 0)
+
+    private fun setCarPlayPlaying(playing: Boolean) {
+        CarPlayMediaKeys::class.java.getDeclaredField("mediaAudioActive")
+            .apply { isAccessible = true }.set(CarPlayMediaKeys, playing)
+    }
 }

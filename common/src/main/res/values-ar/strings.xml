@@ -77,7 +77,7 @@
     <string name="status_attaching_ncm">جارٍ توصيل شبكة NCM/AirPlay</string>
     <string name="status_failed">فشل: %1$s</string>
     <string name="msg_car_hotspot_off">نقطة اتصال السيارة «%1$s» مُغلقة. شغّلها في إعدادات السيارة قبل الاتصال.</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">اختر iPhone ·\u0020</string>
     <string name="audio_saved_value">تم الحفظ: %1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -99,7 +99,7 @@
     <string name="a_familiar_drive">رحلة مألوفة.</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">ما زال اتصال Wi-Fi Direct السابق قيد التشغيل. أعد ضبطه للاتصال.</string>
     <string name="about">حول</string>
-    <string name="about_diplay">حول Lincoln</string>
+    <string name="about_diplay">حول CorsairPlay</string>
     <string name="active">نشط</string>
     <string name="advanced_audio_channel_mapping">تعيين متقدم لقنوات الصوت</string>
     <string name="airplay_icon">أيقونة AirPlay</string>
@@ -124,7 +124,7 @@
     <string name="automatic_map_setup_adb">إعداد الخريطة التلقائي · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">تعتمد التوفر على إعدادات بدء وحدة القيادة.</string>
     <string name="back">رجوع</string>
-    <string name="back_to_diplay">العودة إلى Lincoln</string>
+    <string name="back_to_diplay">العودة إلى CorsairPlay</string>
     <string name="band">النطاق</string>
     <string name="bluetooth_settings">إعدادات بلوتوث</string>
     <string name="byd_navigation">ملاحة BYD</string>
@@ -677,6 +677,10 @@
     <string name="car_button_icon">الأيقونة</string>
     <string name="car_button_icon_custom">أيقونة مخصصة</string>
     <string name="car_button_name">الاسم</string>
+    <string name="car_button_vehicle_brand">ماركة السيارة</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">مخصص</string>
     <string name="car_button_description">يعرض CarPlay هذه الأيقونة وهذا الاسم في قائمة التطبيقات. اضغط عليها للعودة إلى شاشة السيارة. تُطبَّق التغييرات عند اتصال CarPlay في المرة القادمة.</string>
     <string name="car_button_saved_next_connection">تم الحفظ. سيعرض CarPlay الأيقونة والاسم الجديدين عند اتصاله في المرة القادمة.</string>
     <string name="this_head_unit_has_no_image_picker">لا يحتوي نظام السيارة هذا على أداة لاختيار الصور.</string>
@@ -934,4 +938,11 @@
     <string name="settings_lincoln_cluster_remaining">المسافة والوقت المتبقيان في العدادات (تجريبي)</string>
     <string name="settings_lincoln_cluster_remaining_description">يرسل أيضًا إجمالي المسافة والوقت المتبقيين. العدادات المُختبَرة تتجاهل الحقول غير المعروفة، لذا لا فائدة منه إلا بعد أن يؤكد الفحص أسماء الحقول التي يقبلها عدّادك.</string>
     <string name="settings_lincoln_cluster_status">تطبيق العدادات: %1$s\n%2$s</string>
+    <string name="settings_microphone_without_48khz">الميكروفون: عدم توفير 48 kHz (تجريبي)</string>
+    <string name="settings_microphone_without_48khz_description">قد تسجل رسائل WeChat الصوتية ومكالماته صمتًا عندما يفتح iPhone تدفق ميكروفون بتردد 48 kHz، بينما يعمل Siri والهاتف بمعدلات أقل. يجعل 32 kHz أعلى معدل متاح للميكروفون حتى يختار iPhone معدلًا أقل. يعيد توصيل CarPlay.</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">العودة إلى %1$s</string>
+    <string name="settings_carplay_corner_radius_description">يدوّر زوايا صورة CarPlay فوق خلفية شاشة السيارة ذات اللون الموحد. عند الإيقاف تبقى الزوايا حادة.</string>
+    <string name="settings_carplay_corner_radius_off">إيقاف</string>
+    <string name="settings_carplay_corner_radius">نصف قطر زوايا CarPlay</string>
 </resources>

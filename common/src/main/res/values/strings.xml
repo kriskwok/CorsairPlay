@@ -77,7 +77,7 @@
     <string name="status_attaching_ncm">Attaching NCM/AirPlay network</string>
     <string name="status_failed">Failed: %1$s</string>
     <string name="msg_car_hotspot_off">The car hotspot “%1$s” is off. Turn it on in the car settings before connecting.</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">Choose iPhone ·\u0020</string>
     <string name="audio_saved_value">Saved: %1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -91,7 +91,7 @@
     <string name="safe_area_mapping_summary">Safe area: %1$d x %2$d at (%3$d, %4$d) in %5$d x %6$d</string>
     <string name="settings_android9_compat">The following settings are unavailable and hidden on Android 9 (API 28):\n• Wi-Fi P2P (5 GHz) — LocalOnlyHotspot is used instead.\n• HEVC software decoder — hardware decoding is used instead.</string>
     <string name="settings_mfi_address_hint">Address must start with http:// or https://. Token is optional and sent as an Authorization bearer token.</string>
-    <string name="app_name">Lincoln</string>
+    <string name="app_name">CorsairPlay</string>
     <string name="language_section_title">Language</string>
     <string name="language_app_language">App language</string>
     <string name="language_system_default">System default</string>
@@ -101,7 +101,7 @@
     <string name="a_familiar_drive">A familiar drive.</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">A previous Wi-Fi Direct connection is still running. Reset it to connect.</string>
     <string name="about">About</string>
-    <string name="about_diplay">About Lincoln</string>
+    <string name="about_diplay">About CorsairPlay</string>
     <string name="active">Active</string>
     <string name="advanced_audio_channel_mapping">Advanced audio channel mapping</string>
     <string name="airplay_icon">AirPlay icon</string>
@@ -129,7 +129,7 @@
     <string name="automatic_map_setup_adb">Automatic map setup · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">Availability depends on your head unit’s startup settings.</string>
     <string name="back">Back</string>
-    <string name="back_to_diplay">Back to Lincoln</string>
+    <string name="back_to_diplay">Back to CorsairPlay</string>
     <string name="band">Band</string>
     <string name="bluetooth_settings">Bluetooth settings</string>
     <string name="byd_navigation">BYD navigation</string>
@@ -194,7 +194,7 @@
     <string name="default_placeholder_icon">Default placeholder icon</string>
     <string name="diagnostic_report_saved">Diagnostic report saved</string>
     <string name="diagnostics">Diagnostics</string>
-    <string name="diplay">Lincoln</string>
+    <string name="diplay">CorsairPlay</string>
     <string name="discard_changes_and_exit_settings">Discard changes and exit settings</string>
     <string name="disconnect">Disconnect</string>
     <string name="discovering_iphone">Discovering iPhone</string>
@@ -776,11 +776,15 @@
     <string name="fps_counter_millis" translatable="false">%1$d ms</string>
     <string name="fps_counter_no_value" translatable="false">–</string>
     <string name="fps_counter_waiting" translatable="false">-- FPS</string>
-    <string name="car_button_in_carplay">Car button in CarPlay</string>
-    <string name="car_button_icon">Icon</string>
+    <string name="car_button_in_carplay">Vehicle brand</string>
+    <string name="car_button_icon">Logo</string>
     <string name="car_button_icon_custom">Custom icon</string>
-    <string name="car_button_name">Name</string>
-    <string name="car_button_description">CarPlay shows this icon and name in its app list. Tap it to return to the car\'s own screen. Changes apply the next time CarPlay connects.</string>
+    <string name="car_button_name">Brand name</string>
+    <string name="car_button_vehicle_brand">Brand preset</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">Custom</string>
+    <string name="car_button_description">Built-in presets use their own logo and name. Custom keeps your uploaded logo and name. Switching presets never changes pairing or deletes your custom settings. The CarPlay button updates the next time CarPlay connects.</string>
     <string name="car_button_saved_next_connection">Saved. CarPlay shows the new icon and name the next time it connects.</string>
     <string name="this_head_unit_has_no_image_picker">This head unit has no image picker.</string>
 
@@ -854,6 +858,19 @@
     <string name="update_failed">Update failed</string>
     <string name="update_available_home">Update available</string>
     <string name="update_saved_to">Saved to %1$s</string>
+    <string name="update_history_download">Download older versions</string>
+    <string name="update_history_checking">Loading versions…</string>
+    <string name="update_history_empty">No downloadable versions were found.</string>
+    <string name="update_history_failed">Could not load older versions.</string>
+    <string name="update_history_title">Older versions</string>
+    <string name="update_history_confirm">Download %1$s to the system Downloads folder? It will not be installed or change the current version.</string>
+    <string name="update_history_notes_title">Release notes</string>
+    <string name="update_history_notes_missing">No release notes were provided for this version.</string>
+    <string name="update_history_action">Download</string>
+    <string name="update_history_downloading">Downloading old version · %1$d%%</string>
+    <string name="update_history_verifying">Verifying old-version APK…</string>
+    <string name="update_history_saved_title">Download complete</string>
+    <string name="update_history_permission_denied">Storage permission is required to save into the system Downloads folder.</string>
     <string name="backup_title">Back up settings</string>
     <string name="backup_open">Back up or restore on a phone</string>
     <string name="backup_open_description">Show a QR code so a phone browser on the same network can export or import Lincoln settings. The service stops when you leave the page.</string>
@@ -990,4 +1007,11 @@
     <string name="settings_lincoln_cluster_status">Cluster app: %1$s\n%2$s</string>
     <string name="settings_lincoln_fast_video">Lincoln/Ford smooth mode (experimental)</string>
     <string name="settings_lincoln_fast_video_description">Shortens the wait before each frame is shown while keeping the resolution and audio settings. On by default on supported head units; turn it off to compare. Applies at the next connection.</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">Back to %1$s</string>
+    <string name="settings_carplay_corner_radius_description">Rounds CarPlay\'s picture corners over the head unit\'s solid background. Off uses square corners.</string>
+    <string name="settings_carplay_corner_radius_off">Off</string>
+    <string name="settings_carplay_corner_radius">CarPlay corner radius</string>
+    <string name="settings_home_card_media">Show song and lyrics on the home card</string>
+    <string name="settings_home_card_media_description">When CarPlay is playing, the home-screen CarPlay card shows the song name with the current lyric underneath. Pausing or stopping restores the plain CarPlay title. Default off.</string>
 </resources>

@@ -33,6 +33,13 @@ object CarPlayMediaButton {
     const val KEYCODE_BYD_CARPLAY_VOICE = 327
     const val KEYCODE_BYD_CARPLAY_VOICE_LONG = 328
 
+    /** Ford/Lincoln steering-wheel seek keys. They are not Android's standard media key codes. */
+    const val KEYCODE_LINCOLN_SWC_SEEK_LEFT = 297
+    const val KEYCODE_LINCOLN_SWC_SEEK_RIGHT = 298
+    /** Ford/Lincoln centre-console previous/next keys. */
+    const val KEYCODE_LINCOLN_CONSOLE_PREVIOUS = 294
+    const val KEYCODE_LINCOLN_CONSOLE_NEXT = 295
+
     /**
      * Whether [keyCode] is a voice key that opens Siri. The BYD wheel sends each press as an
      * instant down/up pair, so a long press arrives as its own key rather than as a held one.
@@ -48,10 +55,25 @@ object CarPlayMediaButton {
     fun isShortVoiceKey(keyCode: Int): Boolean =
         keyCode == KEYCODE_BYD_CARPLAY_VOICE || keyCode == KEYCODE_BYD_AUTO_MEDIA_VOICE
 
+    /** Previous/next keys, including Ford/Lincoln's private steering-wheel seek codes. */
+    fun forTrackKey(keyCode: Int): Int? = when (keyCode) {
+        KeyEvent.KEYCODE_MEDIA_NEXT,
+        KEYCODE_LINCOLN_SWC_SEEK_RIGHT,
+        KEYCODE_LINCOLN_CONSOLE_NEXT -> NEXT
+        KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+        KEYCODE_LINCOLN_SWC_SEEK_LEFT,
+        KEYCODE_LINCOLN_CONSOLE_PREVIOUS -> PREVIOUS
+        else -> null
+    }
+
     /** The CarPlay press for [keyCode], or null when the key is not a media key CarPlay handles. */
     fun forKeyCode(keyCode: Int, experimentalDiLink3Keys: Boolean = false): Int? = when (keyCode) {
-        KeyEvent.KEYCODE_MEDIA_NEXT -> NEXT
-        KeyEvent.KEYCODE_MEDIA_PREVIOUS -> PREVIOUS
+        KeyEvent.KEYCODE_MEDIA_NEXT,
+        KEYCODE_LINCOLN_SWC_SEEK_RIGHT,
+        KEYCODE_LINCOLN_CONSOLE_NEXT -> NEXT
+        KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+        KEYCODE_LINCOLN_SWC_SEEK_LEFT,
+        KEYCODE_LINCOLN_CONSOLE_PREVIOUS -> PREVIOUS
         KeyEvent.KEYCODE_MEDIA_PLAY,
         KeyEvent.KEYCODE_MEDIA_PAUSE,
         KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
@@ -81,8 +103,12 @@ object CarPlayMediaButton {
     ): Int? {
         if (!sessionActive || inCall) return null
         return when (keyCode) {
-            KeyEvent.KEYCODE_MEDIA_NEXT -> NEXT
-            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> PREVIOUS
+            KeyEvent.KEYCODE_MEDIA_NEXT,
+            KEYCODE_LINCOLN_SWC_SEEK_RIGHT,
+            KEYCODE_LINCOLN_CONSOLE_NEXT -> NEXT
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+            KEYCODE_LINCOLN_SWC_SEEK_LEFT,
+            KEYCODE_LINCOLN_CONSOLE_PREVIOUS -> PREVIOUS
             else -> null
         }
     }

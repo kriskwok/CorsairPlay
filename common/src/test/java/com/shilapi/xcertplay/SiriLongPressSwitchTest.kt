@@ -80,9 +80,12 @@ class SiriLongPressSwitchTest {
         installBydSettingsPackage()
         val screen = vehicleSettings()
         val shown = texts(screen)
-        val title = screen.getString(R.string.wheel_siri_long_press_only)
+        val title = VehicleBranding.text(screen, R.string.wheel_siri_long_press_only)
         assertTrue(shown.toString(), title in shown)
-        assertEquals(shown.indexOf(screen.getString(R.string.wheel_siri_long_press_only_description)), shown.indexOf(title) + 1)
+        assertEquals(
+            shown.indexOf(VehicleBranding.text(screen, R.string.wheel_siri_long_press_only_description)),
+            shown.indexOf(title) + 1,
+        )
         assertTrue(title in searchTitles(screen))
     }
 

@@ -8,6 +8,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,6 +44,44 @@ class WaitingScreenAppearanceTest {
 
     @Test fun lightAppThemeKeepsTheConnectionScreenLightWhileCarPlayIsInNightMode() {
         assertEquals(WaitingScreenColors.of(false).background, waitingBackground(appNight = false, carPlayNight = true))
+    }
+
+    @Test fun roundedCarPlaySurroundFollowsTheVehicleThemeNotTheAppTheme() {
+        ReflectionHelpers.setField(activity, "appNight", false)
+        ReflectionHelpers.setField(activity, "carThemeNight", true)
+        val root = CarPlayHostActivity::class.java.getDeclaredMethod("buildContentView")
+            .apply { isAccessible = true }.invoke(activity) as ViewGroup
+        assertEquals(
+            WaitingScreenColors.of(true).background,
+            (root.background as? ColorDrawable)?.color,
+        )
+
+        // App appearance changes do not alter the vehicle's system theme around CarPlay.
+        ReflectionHelpers.setField(activity, "appNight", true)
+        ReflectionHelpers.getField<() -> Unit>(activity, "paintWaitingScreen").invoke()
+        assertEquals(
+            WaitingScreenColors.of(true).background,
+            (root.background as? ColorDrawable)?.color,
+        )
+
+        ReflectionHelpers.setField(activity, "carThemeNight", false)
+        CarPlayHostActivity::class.java.getDeclaredMethod("applyCarPlaySurroundAppearance")
+            .apply { isAccessible = true }.invoke(activity)
+        assertEquals(
+            WaitingScreenColors.of(false).background,
+            (root.background as? ColorDrawable)?.color,
+        )
+    }
+
+    @Test fun onlyFullscreenWithBothSystemBarsHiddenUsesBlackCorners() {
+        ReflectionHelpers.setField(activity, "hideTopBar", true)
+        ReflectionHelpers.setField(activity, "hideBottomBar", false)
+        assertFalse(CarPlayHostActivity::class.java.getDeclaredMethod("isCarPlayFullscreen")
+            .apply { isAccessible = true }.invoke(activity) as Boolean)
+
+        ReflectionHelpers.setField(activity, "hideBottomBar", true)
+        assertTrue(CarPlayHostActivity::class.java.getDeclaredMethod("isCarPlayFullscreen")
+            .apply { isAccessible = true }.invoke(activity) as Boolean)
     }
 
     private fun waitingBackground(appNight: Boolean, carPlayNight: Boolean): Int {

@@ -1083,7 +1083,7 @@ class AdaptiveSettingsUiTest {
         open(R.string.language_section_title)
         assertEquals(SettingsCategory.LANGUAGE, ReflectionHelpers.getField<SettingsCategory>(screen, "settingsCategory"))
         assertTrue(texts(screen).any { it.text == screen.getString(R.string.language_hint) })
-        assertTrue(texts(screen).any { it.text == screen.getString(R.string.settings_language_summary) })
+        assertTrue(texts(screen).any { it.text == VehicleBranding.text(screen, R.string.settings_language_summary) })
         ReflectionHelpers.callInstanceMethod<Unit>(screen, "openSettingsCategory",
             ReflectionHelpers.ClassParameter(SettingsCategory::class.java, SettingsCategory.OVERVIEW))
         open(R.string.about)

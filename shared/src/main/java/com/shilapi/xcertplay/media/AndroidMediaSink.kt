@@ -455,10 +455,10 @@ class AndroidMediaSink(
     private val callVoiceFilter: Boolean = false,
     /**
      * Trim the music track's playback rate to follow a head unit whose audio clock drifts (#610).
-     * On by default; a head unit that renders the periodic rate changes as a faint artifact can
-     * turn it off, at the cost of a possible music pause every minute or so on a drifting clock.
+     * Off by default because some head units render the periodic rate changes as a faint artifact;
+     * enabling it can prevent a music pause every minute or so on a drifting clock.
      */
-    private val musicClockTrimEnabled: Boolean = true,
+    private val musicClockTrimEnabled: Boolean = false,
     /** Read at each call: a phone or tablet used as the head unit plays calls on its loudspeaker (#701). */
     private val callSpeakerphone: () -> Boolean = { false },
     /**
@@ -2094,7 +2094,7 @@ private class AudioRenderer(
     private val echoReference: EchoReference? = null,
     voiceFilter: Boolean = false,
     /** Trim the music track's playback rate to follow a drifting head-unit clock (#610). */
-    private val musicClockTrimEnabled: Boolean = true,
+    private val musicClockTrimEnabled: Boolean = false,
 ) : Closeable {
     private data class AudioPacket(val rtp: ByteArray, val sample: Int)
 
@@ -2155,6 +2155,8 @@ private class AudioRenderer(
     private var lastWriteErrorCode: Int? = null
     private var zeroWritesThisWindow = 0
     private var partialWritesThisWindow = 0
+    private val musicPcmWriter = PcmChunkWriter()
+    private var musicWriteFallbackReported = false
     private var lastPlaybackHeadFrames: Long? = null
     private var maxWriteMs = 0L
     private var statsWindowStartNs = 0L
@@ -2808,51 +2810,14 @@ private class AudioRenderer(
         // ignores the STREAM_MUSIC mute the key sets. After the fade-in, so the ramp cannot put
         // sound back. Calls were excluded when the flag was set.
         if (audioOffMuted) PcmGain.scaleS16(data, offset, length, 0f)
-        var written = 0
-        while (written < length && running) {
-            // Long-running PCM writes may span several slider adjustments.
-            applyNavigationAttenuation()
-            // Scale the music samples themselves: several head-unit HALs ignore AudioTrack.setVolume
-            // for a whole stream, which made the ducking inaudible on the MEK-MX8Q. Doing it per
-            // write chunk, not per buffer, lets a long blocking write pick up the ramp.
-            // A loudspeaker call is mapped to MEDIA, but it is speech and must keep its level.
-            if (mappedChannel == AudioChannel.MEDIA && format.audioType != "telephony") {
-                audioFocusCoordinator.tickNavigationDucking()
-                val gain = audioFocusCoordinator.musicPcmGain
-                PcmGain.scaleS16(data, offset + written, length - written, gain)
-                val percent = (gain * 100).toInt()
-                // Report only the two settled levels, not each step of the ramp.
-                if (percent != lastDuckingPercent && (percent == 100 || percent == 25)) {
-                    lastDuckingPercent = percent
-                    runCatching { report("Audio: music gain=${percent}% applied to PCM") }
-                }
-            }
-            val writeLength = if (playbackStarted) {
-                length - written
-            } else {
-                minOf(length - written, PREBUFFER_WRITE_CHUNK_BYTES)
-            }
-            val writeStarted = System.nanoTime()
-            diagnosticStage = "track-write"
-            val count = track.write(data, offset + written, writeLength, AudioTrack.WRITE_BLOCKING)
-            maxWriteMs = maxOf(maxWriteMs, (System.nanoTime() - writeStarted) / 1_000_000L)
-            if (count < 0) {
-                writeErrorsThisWindow++
-                lastWriteErrorCode = count
-                break
-            }
-            if (count == 0) {
-                zeroWritesThisWindow++
-                break
-            }
-            if (count < writeLength) partialWritesThisWindow++
+
+        fun recordWrite(source: ByteArray, sourceOffset: Int, count: Int) {
             val framesWritten = count / frameBytes
             if (ambientMedia && AmbientMusicController.wantsPcm(ambientRendererToken)) {
                 ambientEnvelope.append(totalWrittenFrames, framesWritten.toLong(),
-                    AmbientMusicEnvelope.pcmRms(data, offset + written, count),
-                    ambientBass.rms(data, offset + written, count))
+                    AmbientMusicEnvelope.pcmRms(source, sourceOffset, count),
+                    ambientBass.rms(source, sourceOffset, count))
             }
-            written += count
             totalWrittenFrames += framesWritten
             writtenFramesThisWindow += framesWritten
             bufferProgress.written(count)
@@ -2872,8 +2837,83 @@ private class AudioRenderer(
                 } else {
                     null
                 }
-                reference.append(data, offset + written - count, count, pcmChannels, pending, System.nanoTime())
+                reference.append(source, sourceOffset, count, pcmChannels, pending, System.nanoTime())
             }
+        }
+
+        val isMusic = mappedChannel == AudioChannel.MEDIA && format.audioType != "telephony"
+        if (isMusic) {
+            val result = musicPcmWriter.write(
+                data = data,
+                offset = offset,
+                length = length,
+                prepareChunk = { chunk, chunkLength ->
+                    applyNavigationAttenuation()
+                    audioFocusCoordinator.tickNavigationDucking()
+                    val gain = audioFocusCoordinator.musicPcmGain
+                    PcmGain.scaleS16(chunk, 0, chunkLength, gain)
+                    val percent = (gain * 100).toInt()
+                    // Report only the two settled levels, not each step of the ramp.
+                    if (percent != lastDuckingPercent && (percent == 100 || percent == 25)) {
+                        lastDuckingPercent = percent
+                        runCatching { report("Audio: music gain=${percent}% applied to PCM") }
+                    }
+                },
+                writeChunk = { chunk, chunkOffset, writeLength, blocking ->
+                    val writeStarted = System.nanoTime()
+                    diagnosticStage = "track-write"
+                    val count = track.write(
+                        chunk,
+                        chunkOffset,
+                        writeLength,
+                        if (blocking) AudioTrack.WRITE_BLOCKING else AudioTrack.WRITE_NON_BLOCKING,
+                    )
+                    maxWriteMs = maxOf(maxWriteMs, (System.nanoTime() - writeStarted) / 1_000_000L)
+                    count
+                },
+                afterWrite = { chunk, chunkOffset, count -> recordWrite(chunk, chunkOffset, count) },
+                shouldContinue = { running },
+            )
+            zeroWritesThisWindow += result.zeroWrites
+            partialWritesThisWindow += result.partialWrites
+            result.writeError?.let { error ->
+                writeErrorsThisWindow++
+                lastWriteErrorCode = error
+            }
+            if (result.fellBackToBlocking && !musicWriteFallbackReported) {
+                musicWriteFallbackReported = true
+                runCatching {
+                    report("Audio: music write fell back to blocking after no output progress")
+                }
+            }
+            return
+        }
+
+        var written = 0
+        while (written < length && running) {
+            // Long-running PCM writes may span several slider adjustments.
+            applyNavigationAttenuation()
+            val writeLength = if (playbackStarted) {
+                length - written
+            } else {
+                minOf(length - written, PREBUFFER_WRITE_CHUNK_BYTES)
+            }
+            val writeStarted = System.nanoTime()
+            diagnosticStage = "track-write"
+            val count = track.write(data, offset + written, writeLength, AudioTrack.WRITE_BLOCKING)
+            maxWriteMs = maxOf(maxWriteMs, (System.nanoTime() - writeStarted) / 1_000_000L)
+            if (count < 0) {
+                writeErrorsThisWindow++
+                lastWriteErrorCode = count
+                break
+            }
+            if (count == 0) {
+                zeroWritesThisWindow++
+                break
+            }
+            if (count < writeLength) partialWritesThisWindow++
+            recordWrite(data, offset + written, count)
+            written += count
         }
     }
 
@@ -2967,6 +3007,11 @@ private class AudioRenderer(
         // "PHONE " marks the iPhone's own log lines, which the report drops, and it dropped every
         // call's playback line with it (#647).
         val channelName = if (mappedChannel == AudioChannel.PHONE) "CALL" else mappedChannel?.name
+        val musicWriteMode = if (mappedChannel == AudioChannel.MEDIA && format.audioType != "telephony") {
+            if (musicPcmWriter.usesNonBlocking) "nonblocking" else "blocking-fallback"
+        } else {
+            "blocking"
+        }
         val line = "audio stats audioType=${format.audioType} channel=$channelName " +
             "routeType=${currentTrack?.routedDevice?.type ?: -1} codec=${format.codec} " +
             "trackState=${currentTrack?.state ?: -1} playState=${currentTrack?.playState ?: -1} " +
@@ -2980,7 +3025,7 @@ private class AudioRenderer(
             "playbackHeadFrames=${playbackHeadFrames ?: -1} playbackAdvanceFrames=${playbackAdvanceFrames ?: -1} " +
             "estimatedQueuedFrames=${queuedFrames ?: -1} writeErrors=$writeErrorsThisWindow " +
             "lastWriteError=${lastWriteErrorCode ?: "none"} zeroWrites=$zeroWritesThisWindow " +
-            "partialWrites=$partialWritesThisWindow " +
+            "partialWrites=$partialWritesThisWindow musicWrite=$musicWriteMode " +
             "decoderDroppedTotal=$inputDropped outputBuffersTotal=$outputBuffers rebuffers=$rebufferCount " +
             "playbackRate=${clockTrim?.rate ?: -1} ended=$force"
         Log.i(STATS_TAG, line)

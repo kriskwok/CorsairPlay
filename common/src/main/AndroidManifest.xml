@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- USB insertion can arrive while the projection task is in the background. -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
     <!-- Optional, user-authorized startup of the car's own hotspot. -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 
@@ -70,6 +72,24 @@
         </activity>
         <service android:name="com.shilapi.xcertplay.DiPlaySessionService"
             android:exported="false" android:foregroundServiceType="connectedDevice|microphone|location" />
+
+        <receiver
+            android:name="com.shilapi.xcertplay.CarPlayMediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+                <action android:name="com.corsairplay.action.CARPLAY_CARD_TOGGLE" />
+                <action android:name="com.corsairplay.action.CARPLAY_CARD_NEXT" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="com.shilapi.xcertplay.CarPlayHomeCardReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.corsairplay.action.CARPLAY_CARD_QUERY" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name="com.shilapi.xcertplay.CarPlayHostActivity"

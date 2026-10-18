@@ -167,6 +167,7 @@ class CarButtonImagePickerTest {
         val session = mock(CarPlayController::class.java)
         val sink = mock(AndroidMediaSink::class.java)
         val previousName = AirPlayPersistence.loadOemLabel(activity)
+        val previousPreset = VehicleBranding.preset(activity)
         var stops = 0
         CarPlayBackgroundSession.store(session, sink, 800, 480, Any(),
             CarPlaySessionDisplay(800, 480, Surface.ROTATION_0, false, false, 800, 480)) {
@@ -197,6 +198,7 @@ class CarButtonImagePickerTest {
             assertNull(shadowOf(activity).nextStartedActivity)
         } finally {
             AirPlayPersistence.saveOemLabel(activity, previousName)
+            VehicleBranding.setPreset(activity, previousPreset)
             PendingReconnect.clear()
         }
     }

@@ -77,7 +77,7 @@
     <string name="status_attaching_ncm">正在连接 NCM/AirPlay 网络</string>
     <string name="status_failed">失败：%1$s</string>
     <string name="msg_car_hotspot_off">车机热点“%1$s”未开启。请在车机设置中开启后再连接。</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">选择 iPhone ·\u0020</string>
     <string name="audio_saved_value">已保存：%1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -93,7 +93,7 @@
     <string name="a_familiar_drive">熟悉的驾乘体验。</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">之前的 Wi-Fi Direct 连接仍在运行。请重置后再连接。</string>
     <string name="about">关于</string>
-    <string name="about_diplay">关于 Lincoln</string>
+    <string name="about_diplay">关于 CorsairPlay</string>
     <string name="active">已启用</string>
     <string name="advanced_audio_channel_mapping">高级音频通道映射</string>
     <string name="airplay_icon">AirPlay 图标</string>
@@ -105,7 +105,7 @@
     <string name="allow_the_connection_permission_to_continue">请授予连接权限以继续</string>
     <string name="an_independent_carplay_receiver_for_android_head_units_wir">面向 Android 车机的独立 CarPlay 接收器。有线和无线连接均在车机上运行，并使用本地认证。普通 iPhone 无需越狱、Mac、转接器或登录即可连接。\n\n此版本使用实验性配件身份。本产品未经 Apple 认证。</string>
     <string name="android_9_compatibility">Android 9 兼容性</string>
-    <string name="app_name">Lincoln</string>
+    <string name="app_name">CorsairPlay</string>
     <string name="app_permissions">应用权限</string>
     <string name="app_settings">应用设置</string>
     <string name="apply_and_reconnect">应用并重新连接</string>
@@ -122,7 +122,7 @@
     <string name="automatic_map_setup_adb">自动地图设置 · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">是否可用取决于车机的启动设置。</string>
     <string name="back">返回</string>
-    <string name="back_to_diplay">返回 Lincoln</string>
+    <string name="back_to_diplay">返回 CorsairPlay</string>
     <string name="band">频段</string>
     <string name="bluetooth_settings">蓝牙设置</string>
     <string name="byd_navigation">比亚迪导航</string>
@@ -188,7 +188,7 @@
     <string name="default_placeholder_icon">默认占位图标</string>
     <string name="diagnostic_report_saved">诊断报告已保存</string>
     <string name="diagnostics">诊断</string>
-    <string name="diplay">Lincoln</string>
+    <string name="diplay">CorsairPlay</string>
     <string name="discard_changes_and_exit_settings">放弃更改并退出设置</string>
     <string name="disconnect">断开连接</string>
     <string name="discovering_iphone">正在查找 iPhone</string>
@@ -733,11 +733,15 @@
     <string name="settings_low_latency_decoder_description">要求高通视频解码器在每一帧解码后立即输出，而不是保留后续帧，并由专用线程立即显示每个已解码的帧，无需等待下一帧到达。可将延迟降低数十毫秒。如果画面出现花屏或卡住，请关闭。下次连接时生效。</string>
     <string name="settings_fps_counter">FPS 计数器</string>
     <string name="settings_fps_counter_description">在 CarPlay 右上角显示计数器：每秒显示的帧数（50 及以上为绿色，30 及以上为黄色，低于 30 为红色）、每秒从 iPhone 接收的帧数以及解码时间。画面静止时帧数很少，因为 iPhone 不发送帧。</string>
-    <string name="car_button_in_carplay">CarPlay 中的车辆按钮</string>
-    <string name="car_button_icon">图标</string>
+    <string name="car_button_in_carplay">车辆品牌</string>
+    <string name="car_button_icon">标志</string>
     <string name="car_button_icon_custom">自定义图标</string>
-    <string name="car_button_name">名称</string>
-    <string name="car_button_description">CarPlay 会在应用列表中显示此图标和名称。点按即可返回车辆自带的界面。更改将在 CarPlay 下次连接时生效。</string>
+    <string name="car_button_name">品牌名称</string>
+    <string name="car_button_vehicle_brand">品牌预设</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">自定义</string>
+    <string name="car_button_description">内置预设会使用各自的标志和名称；自定义会保留您上传的图片和名称。切换预设不会更改配对，也不会删除自定义内容。CarPlay 按钮在下次连接时更新。</string>
     <string name="car_button_saved_next_connection">已保存。CarPlay 将在下次连接时显示新的图标和名称。</string>
     <string name="this_head_unit_has_no_image_picker">此车机没有图片选择器。</string>
 
@@ -811,6 +815,19 @@
     <string name="update_failed">更新失败</string>
     <string name="update_available_home">有可用更新</string>
     <string name="update_saved_to">已保存到 %1$s</string>
+    <string name="update_history_download">下载历史版本</string>
+    <string name="update_history_checking">正在读取历史版本…</string>
+    <string name="update_history_empty">没有找到可下载的历史版本。</string>
+    <string name="update_history_failed">读取历史版本失败。</string>
+    <string name="update_history_title">历史版本</string>
+    <string name="update_history_confirm">将 %1$s 下载到系统下载目录？不会自动安装，也不会改变当前版本。</string>
+    <string name="update_history_notes_title">更新说明</string>
+    <string name="update_history_notes_missing">此版本没有提供更新说明。</string>
+    <string name="update_history_action">下载</string>
+    <string name="update_history_downloading">正在下载历史版本 · %1$d%%</string>
+    <string name="update_history_verifying">正在校验历史版本…</string>
+    <string name="update_history_saved_title">下载完成</string>
+    <string name="update_history_permission_denied">没有存储权限，无法保存到系统下载目录。</string>
     <string name="backup_title">备份设置</string>
     <string name="backup_open">在手机上备份或恢复</string>
     <string name="backup_open_description">显示二维码，同一网络内的手机浏览器即可导出或导入 Lincoln 设置。离开页面后服务自动停止。</string>
@@ -947,4 +964,11 @@
     <string name="settings_lincoln_cluster_status">仪表应用：%1$s\n%2$s</string>
     <string name="settings_lincoln_fast_video">林肯/福特流畅模式（实验性）</string>
     <string name="settings_lincoln_fast_video_description">尝试缩短画面输出等待，保留分辨率和音频设置。适配车机默认开启，可关闭对比；下次连接生效。</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">返回 %1$s</string>
+    <string name="settings_carplay_corner_radius_description">按车机纯色背景裁出 CarPlay 画面的圆角；关闭时保持直角。</string>
+    <string name="settings_carplay_corner_radius_off">关闭</string>
+    <string name="settings_carplay_corner_radius">CarPlay 圆角</string>
+    <string name="settings_home_card_media">桌面卡片显示歌名和歌词</string>
+    <string name="settings_home_card_media_description">CarPlay 播放时，桌面的 CarPlay 卡片会以歌名为标题、当前歌词为副标题；暂停或停止后恢复为“CarPlay”。默认关闭。</string>
 </resources>

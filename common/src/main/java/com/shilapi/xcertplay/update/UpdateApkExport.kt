@@ -3,6 +3,7 @@ package com.shilapi.xcertplay.update
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -22,7 +23,7 @@ internal object UpdateApkExport {
     fun copy(context: Context, apk: File): Saved? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
-                return copyToDownloads(context.contentResolver, apk)
+                return copyToDownloads(context.contentResolver, apk, replaceAll = false)
             } catch (_: Exception) {
                 // Fall through: some head units ship without a working Downloads provider.
             }
@@ -35,20 +36,60 @@ internal object UpdateApkExport {
         }
     }
 
+    /**
+     * Saves a historical APK in the visible system Downloads folder without pruning other versions.
+     * Android 9 and older need WRITE_EXTERNAL_STORAGE; Android 10+ uses MediaStore.
+     */
+    fun copyToSystemDownloads(context: Context, apk: File): Saved {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return copyToDownloads(context.contentResolver, apk, replaceAll = false)
+        }
+        val directory = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Lincoln",
+        )
+        if (!directory.isDirectory && !directory.mkdirs()) {
+            throw IOException("Downloads/Lincoln is unavailable")
+        }
+        val destination = File(directory, apk.name)
+        try {
+            apk.copyTo(destination, overwrite = true)
+            if (!destination.isFile || destination.length() != apk.length()) {
+                throw IOException("Downloads/Lincoln did not keep the APK")
+            }
+        } catch (error: Exception) {
+            destination.delete()
+            throw error
+        }
+        MediaScannerConnection.scanFile(
+            context.applicationContext,
+            arrayOf(destination.absolutePath),
+            arrayOf(APK_MIME),
+            null,
+        )
+        return Saved(destination.absolutePath, null)
+    }
+
     private fun copyToDirectory(directory: File, apk: File): File {
         if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Update storage is unavailable")
-        // Keep only the newest APK so a long-lived head unit does not collect old releases.
-        directory.listFiles()?.filter { it.isFile && it.name != apk.name }?.forEach { it.delete() }
+        // Keep downloaded versions: they are the driver's rollback copies.
         return apk.copyTo(File(directory, apk.name), overwrite = true)
     }
 
-    private fun copyToDownloads(resolver: ContentResolver, apk: File): Saved {
+    private fun copyToDownloads(resolver: ContentResolver, apk: File, replaceAll: Boolean): Saved {
         // Only entries created by this app are visible to these queries, so other apps' files are safe.
-        resolver.delete(
-            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-            "${MediaStore.Downloads.RELATIVE_PATH}=? AND ${MediaStore.Downloads.MIME_TYPE}=?",
-            arrayOf("$DOWNLOADS_DIRECTORY/", APK_MIME),
-        )
+        val selection = if (replaceAll) {
+            "${MediaStore.Downloads.RELATIVE_PATH}=? AND ${MediaStore.Downloads.MIME_TYPE}=?"
+        } else {
+            "${MediaStore.Downloads.RELATIVE_PATH}=? AND ${MediaStore.Downloads.MIME_TYPE}=? AND " +
+                "${MediaStore.Downloads.DISPLAY_NAME}=?"
+        }
+        val arguments = if (replaceAll) {
+            arrayOf("$DOWNLOADS_DIRECTORY/", APK_MIME)
+        } else {
+            arrayOf("$DOWNLOADS_DIRECTORY/", APK_MIME, apk.name)
+        }
+        resolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI, selection, arguments)
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, apk.name)
             put(MediaStore.Downloads.MIME_TYPE, APK_MIME)

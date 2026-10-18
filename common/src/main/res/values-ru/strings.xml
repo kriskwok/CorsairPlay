@@ -77,7 +77,7 @@
     <string name="status_attaching_ncm">Подключение сети NCM/AirPlay</string>
     <string name="status_failed">Ошибка: %1$s</string>
     <string name="msg_car_hotspot_off">Точка доступа автомобиля «%1$s» выключена. Включите её в настройках автомобиля перед подключением.</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">Выбрать iPhone ·\u0020</string>
     <string name="audio_saved_value">Сохранено: %1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -99,7 +99,7 @@
     <string name="a_familiar_drive">Привычная поездка.</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">Предыдущее подключение Wi-Fi Direct всё ещё активно. Сбросьте его, чтобы подключиться.</string>
     <string name="about">О программе</string>
-    <string name="about_diplay">О Lincoln</string>
+    <string name="about_diplay">О CorsairPlay</string>
     <string name="active">Активно</string>
     <string name="advanced_audio_channel_mapping">Расширенное сопоставление звуковых каналов</string>
     <string name="airplay_icon">Значок AirPlay</string>
@@ -124,7 +124,7 @@
     <string name="automatic_map_setup_adb">Автоматическая настройка карты · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">Доступность зависит от настроек запуска вашего головного устройства.</string>
     <string name="back">Назад</string>
-    <string name="back_to_diplay">Вернуться в Lincoln</string>
+    <string name="back_to_diplay">Вернуться в CorsairPlay</string>
     <string name="band">Диапазон</string>
     <string name="bluetooth_settings">Настройки Bluetooth</string>
     <string name="byd_navigation">Навигация BYD</string>
@@ -677,6 +677,10 @@
     <string name="car_button_icon">Значок</string>
     <string name="car_button_icon_custom">Свой значок</string>
     <string name="car_button_name">Название</string>
+    <string name="car_button_vehicle_brand">Марка автомобиля</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">Другая</string>
     <string name="car_button_description">CarPlay показывает этот значок и название в списке приложений. Нажмите его, чтобы вернуться на экран автомобиля. Изменения применятся при следующем подключении CarPlay.</string>
     <string name="car_button_saved_next_connection">Сохранено. CarPlay покажет новый значок и название при следующем подключении.</string>
     <string name="this_head_unit_has_no_image_picker">На этом головном устройстве нет выбора изображений.</string>
@@ -885,4 +889,11 @@
     <string name="settings_lincoln_cluster_remaining">Остаток расстояния и времени на панели (экспериментально)</string>
     <string name="settings_lincoln_cluster_remaining_description">Дополнительно отправляет общий остаток расстояния и времени. Проверенная панель игнорирует неизвестные поля, поэтому это полезно только после подтверждения имён полей, которые принимает ваша панель.</string>
     <string name="settings_lincoln_cluster_status">Приложение панели: %1$s\n%2$s</string>
+    <string name="settings_microphone_without_48khz">Микрофон: не предлагать 48 кГц (экспериментально)</string>
+    <string name="settings_microphone_without_48khz_description">Голосовые сообщения и звонки WeChat могут записываться без звука, когда iPhone открывает микрофон с частотой 48 кГц, хотя Siri и звонки работают на меньших частотах. Теперь микрофон предлагает не выше 32 кГц, чтобы iPhone выбрал меньшую частоту. Переподключает CarPlay.</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">Назад в %1$s</string>
+    <string name="settings_carplay_corner_radius_description">Скругляет углы изображения CarPlay поверх однотонного фона головного устройства. В положении «Выкл.» углы остаются прямыми.</string>
+    <string name="settings_carplay_corner_radius_off">Выкл.</string>
+    <string name="settings_carplay_corner_radius">Радиус углов CarPlay</string>
 </resources>

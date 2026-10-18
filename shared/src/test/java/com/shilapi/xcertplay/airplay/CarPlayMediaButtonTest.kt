@@ -12,6 +12,14 @@ class CarPlayMediaButtonTest {
     fun steeringWheelKeysMapToCarPlayMediaPresses() {
         assertEquals(CarPlayMediaButton.NEXT, CarPlayMediaButton.forKeyCode(KeyEvent.KEYCODE_MEDIA_NEXT))
         assertEquals(CarPlayMediaButton.PREVIOUS, CarPlayMediaButton.forKeyCode(KeyEvent.KEYCODE_MEDIA_PREVIOUS))
+        assertEquals(CarPlayMediaButton.NEXT,
+            CarPlayMediaButton.forKeyCode(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_RIGHT))
+        assertEquals(CarPlayMediaButton.PREVIOUS,
+            CarPlayMediaButton.forKeyCode(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_LEFT))
+        assertEquals(CarPlayMediaButton.NEXT,
+            CarPlayMediaButton.forKeyCode(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_NEXT))
+        assertEquals(CarPlayMediaButton.PREVIOUS,
+            CarPlayMediaButton.forKeyCode(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_PREVIOUS))
         // BYD rewrites its play/pause key into PLAY or PAUSE from the session state; both toggle.
         assertEquals(CarPlayMediaButton.PLAY_PAUSE, CarPlayMediaButton.forKeyCode(KeyEvent.KEYCODE_MEDIA_PLAY))
         assertEquals(CarPlayMediaButton.PLAY_PAUSE, CarPlayMediaButton.forKeyCode(KeyEvent.KEYCODE_MEDIA_PAUSE))
@@ -72,6 +80,14 @@ class CarPlayMediaButtonTest {
 
         assertEquals(CarPlayMediaButton.NEXT, claim(KeyEvent.KEYCODE_MEDIA_NEXT))
         assertEquals(CarPlayMediaButton.PREVIOUS, claim(KeyEvent.KEYCODE_MEDIA_PREVIOUS))
+        assertEquals(CarPlayMediaButton.NEXT,
+            claim(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_RIGHT))
+        assertEquals(CarPlayMediaButton.PREVIOUS,
+            claim(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_LEFT))
+        assertEquals(CarPlayMediaButton.NEXT,
+            claim(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_NEXT))
+        assertEquals(CarPlayMediaButton.PREVIOUS,
+            claim(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_PREVIOUS))
         // Without a session, or during a call, the wheel keeps the car's own action.
         assertNull(claim(KeyEvent.KEYCODE_MEDIA_NEXT, sessionActive = false))
         assertNull(claim(KeyEvent.KEYCODE_MEDIA_PREVIOUS, sessionActive = false))

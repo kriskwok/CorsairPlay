@@ -160,6 +160,7 @@ class ImageCropActivity : Activity() {
         }
         try {
             AirPlayPersistence.saveCustomAirPlayIcon(applicationContext, encoded)
+            VehicleBranding.setPreset(applicationContext, VehicleBrandPreset.CUSTOM)
             setResult(
                 RESULT_OK,
                 Intent().putExtra(EXTRA_CROP_COMPLETE, true),

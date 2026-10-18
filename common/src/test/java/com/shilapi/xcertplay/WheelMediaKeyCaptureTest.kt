@@ -33,6 +33,7 @@ class WheelMediaKeyCaptureTest {
         service.javaClass.getDeclaredMethod("onServiceConnected").apply { isAccessible = true }.invoke(service)
         service.session = { session }
         service.sendCarPlayMediaKey = { sent += it; true }
+        service.isCarPlayPlaying = { session != null }
         audio = service.getSystemService(AudioManager::class.java)
         audio.mode = AudioManager.MODE_NORMAL
     }
@@ -46,7 +47,21 @@ class WheelMediaKeyCaptureTest {
     @Test fun previousAndNextReachCarPlayWhileConnected() {
         assertTrue(press(KeyEvent.KEYCODE_MEDIA_PREVIOUS))
         assertTrue(press(KeyEvent.KEYCODE_MEDIA_NEXT))
-        assertEquals(listOf(CarPlayMediaButton.PREVIOUS, CarPlayMediaButton.NEXT), sent)
+        assertTrue(press(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_LEFT))
+        assertTrue(press(CarPlayMediaButton.KEYCODE_LINCOLN_SWC_SEEK_RIGHT))
+        assertTrue(press(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_PREVIOUS))
+        assertTrue(press(CarPlayMediaButton.KEYCODE_LINCOLN_CONSOLE_NEXT))
+        assertEquals(
+            listOf(
+                CarPlayMediaButton.PREVIOUS,
+                CarPlayMediaButton.NEXT,
+                CarPlayMediaButton.PREVIOUS,
+                CarPlayMediaButton.NEXT,
+                CarPlayMediaButton.PREVIOUS,
+                CarPlayMediaButton.NEXT,
+            ),
+            sent,
+        )
     }
 
     @Test fun onePhysicalPressSendsOneCarPlayTap() {
@@ -70,6 +85,12 @@ class WheelMediaKeyCaptureTest {
 
     @Test fun theSettingCanReturnTheKeysToTheCar() {
         WheelMediaKeySettings.setEnabled(service, false)
+        assertFalse(press(KeyEvent.KEYCODE_MEDIA_NEXT))
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test fun pausedCarPlayLeavesTheKeysToTheHeadUnit() {
+        service.isCarPlayPlaying = { false }
         assertFalse(press(KeyEvent.KEYCODE_MEDIA_NEXT))
         assertTrue(sent.isEmpty())
     }

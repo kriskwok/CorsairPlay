@@ -515,11 +515,13 @@ class BydVehicleDataSettingsTest {
         texts().single { it.text == activity.getString(R.string.advanced_vehicle_data) }.performClick()
 
         invokeProbe()
-        assertTrue(texts().any { it.text == activity.getString(R.string.adb_checking_may_ask) })
+        assertTrue(texts().any { it.text == VehicleBranding.text(activity, R.string.adb_checking_may_ask) })
         backend.run("diplay-byd13-probe")
 
         assertEquals(2, backend.probeCalls)
-        assertTrue(texts().any { it.text.toString().contains(activity.getString(R.string.vehicle_probe_allowed_once)) })
+        assertTrue(texts().any {
+            it.text.toString().contains(VehicleBranding.text(activity, R.string.vehicle_probe_allowed_once))
+        })
     }
 
     @Test fun aProbeRefusedRightAfterApprovalIsRetriedOnce() {

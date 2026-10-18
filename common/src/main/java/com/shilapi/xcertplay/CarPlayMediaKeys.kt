@@ -1,5 +1,7 @@
 package com.shilapi.xcertplay
 
+import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -86,6 +88,7 @@ internal object CarPlayMediaKeys {
      */
     private var pausedForAssistant: CarPlayController? = null
     private var assistantPausePending: Runnable? = null
+    private var mediaButtonReceiverRegistered = false
     private var appContext: Context? = null
     private var mediaAudioActive = false
     private var nowPlaying = CarPlayNowPlaying()
@@ -326,11 +329,15 @@ internal object CarPlayMediaKeys {
                 if (it) forwardGrantedFocusLocked()
             }
         }
-        session = MediaSession(context, "Lincoln CarPlay").apply {
+        session = MediaSession(context, "${VehicleBranding.displayName(context)} CarPlay").apply {
             setCallback(callback, mainHandler)
+            setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
+                MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
+            setMediaButtonReceiver(mediaButtonPendingIntent(context))
             setMetadata(androidMetadata(nowPlaying, shownArtworkLocked()))
-            isActive = true
+            isActive = effectivePlayingLocked()
         }
+        updateMediaButtonReceiverLocked(effectivePlayingLocked())
         Log.i(TAG, "media keys active focusDisabled=$focusDisabled focusGranted=$granted")
         WheelKeyLog.note("media keys active focusDisabled=$focusDisabled focusGranted=$granted")
     }
@@ -369,6 +376,7 @@ internal object CarPlayMediaKeys {
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
                 restoreMusicVolumeAfterTransientLoss()
+                updateMediaButtonReceiverLocked(true, force = true)
                 // Only rebuild when this interruption actually paused music. Every focus request
                 // receives a GAIN on startup, and rebuilding unconditionally there costs an
                 // unnecessary track allocation and a short prebuffer.
@@ -379,7 +387,9 @@ internal object CarPlayMediaKeys {
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
                 clearMusicVolumeGuard()
-                resumeAfterAssistant(expectedController)
+                // Permanent loss normally means the car's own media app started. Pause CarPlay
+                // instead of immediately requesting playback and stealing focus back.
+                pauseForAssistant(expectedController)
             }
         }
         // Resolve the matching sink and invoke it outside the media-key monitor. An abandoned
@@ -431,7 +441,7 @@ internal object CarPlayMediaKeys {
         val shouldPause = synchronized(this) {
             if (controller !== expected) return
             if (pausedForAssistant != null) return
-            val playing = mediaAudioActive || nowPlaying.playing
+            val playing = effectivePlayingLocked()
             if (!playing) return
             pausedForAssistant = expected
             true
@@ -513,6 +523,7 @@ internal object CarPlayMediaKeys {
     }
 
     private fun releaseLocked() {
+        updateMediaButtonReceiverLocked(false)
         focusOwner = null
         controller?.let(com.shilapi.xcertplay.media.AmbientMusicController::releasePlaybackOwner)
         artworkOwner = null
@@ -541,12 +552,13 @@ internal object CarPlayMediaKeys {
     }
 
     private fun publishPlaybackStateLocked() {
-        val playing = if (nowPlaying.elapsedMillis != null || nowPlaying.title != null) {
-            nowPlaying.playing
-        } else {
-            mediaAudioActive
-        }
-        session?.setPlaybackState(
+        val playing = effectivePlayingLocked()
+        val current = session ?: return
+        // Let Android route hardware media keys to whichever player is actually running. A paused
+        // CarPlay session must not keep stealing next/previous from the head unit's own media app.
+        current.isActive = playing
+        updateMediaButtonReceiverLocked(playing)
+        current.setPlaybackState(
             PlaybackState.Builder()
                 .setActions(ACTIONS)
                 .setState(
@@ -560,6 +572,22 @@ internal object CarPlayMediaKeys {
                 .build(),
         )
     }
+
+    /** Whether CarPlay, rather than another car source, currently owns media-key routing. */
+    internal fun isPlaying(): Boolean = synchronized(this) {
+        effectivePlayingLocked()
+    }
+
+    /**
+     * The iPhone's playback state is authoritative once it has sent metadata. The media audio
+     * stream can remain open briefly after pause, especially when the car's own player takes focus.
+     */
+    private fun effectivePlayingLocked(): Boolean =
+        if (nowPlaying.elapsedMillis != null || nowPlaying.title != null) {
+            nowPlaying.playing
+        } else {
+            mediaAudioActive
+        }
 
     private fun send(index: Int, source: String): Boolean {
         // While the car's video player is on screen the wheel drives it: a CarPlay play/pause would
@@ -580,6 +608,56 @@ internal object CarPlayMediaKeys {
 
     /** A previous/next key captured by the wheel accessibility service before the stock media app. */
     internal fun onWheelMediaKey(index: Int): Boolean = send(index, "wheel")
+
+    /** Play/pause from the launcher's CarPlay card. */
+    internal fun onHomeCardToggle(): Boolean =
+        send(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PLAY_PAUSE, "home-card")
+
+    /** Next track from the launcher's CarPlay card. */
+    internal fun onHomeCardNext(): Boolean =
+        send(com.shilapi.xcertplay.airplay.CarPlayMediaButton.NEXT, "home-card-next")
+
+    /**
+     * A media key routed to the deprecated receiver used by older head units. This outranks the
+     * stock media app on Android 8 while CarPlay is the player.
+     */
+    internal fun onMediaButtonBroadcast(event: KeyEvent): Boolean {
+        val index = CarPlayMediaButton.forKeyCode(
+            event.keyCode,
+            appContext?.let(BydOutputSettings::carPlayCallControls) == true,
+        ) ?: return false
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            send(index, "media-button")
+        }
+        return true
+    }
+
+    private fun updateMediaButtonReceiverLocked(registered: Boolean, force: Boolean = false) {
+        if (!force && registered == mediaButtonReceiverRegistered) return
+        val context = appContext ?: return
+        val audio = context.getSystemService(AudioManager::class.java) ?: return
+        val component = ComponentName(context, CarPlayMediaButtonReceiver::class.java)
+        runCatching {
+            @Suppress("DEPRECATION")
+            if (registered) audio.registerMediaButtonEventReceiver(component)
+            else audio.unregisterMediaButtonEventReceiver(component)
+        }.onSuccess {
+            if (registered != mediaButtonReceiverRegistered) {
+                mediaButtonReceiverRegistered = registered
+            }
+        }
+    }
+
+    private fun mediaButtonPendingIntent(context: Context): PendingIntent {
+        val intent = Intent(context, CarPlayMediaButtonReceiver::class.java)
+            .setAction(Intent.ACTION_MEDIA_BUTTON)
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
 
     /** The steering-wheel microphone key captured outside the Android key stream (Geely/Lynk). */
     internal fun onExternalSiriKey(): Boolean {

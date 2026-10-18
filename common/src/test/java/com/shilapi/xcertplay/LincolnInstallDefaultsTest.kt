@@ -5,6 +5,7 @@ import android.os.Build
 import com.shilapi.xcertplay.airplay.CarPlaySize
 import com.shilapi.xcertplay.lincoln.LincolnClusterSettings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -41,6 +42,23 @@ class LincolnInstallDefaultsTest {
 
     @Test fun navigationDuckingIsOnByDefault() {
         assertTrue(AirPlayPersistence.loadNavigationDuckingMedia(context))
+    }
+
+    @Test fun musicClockTrimIsOffByDefaultToPreventResamplerNoise() {
+        assertFalse(AirPlayPersistence.loadMusicClockTrim(context))
+    }
+
+    @Test fun anOldSavedClockTrimIsDisabledOnceDuringUpgrade() {
+        val preferences = context.getSharedPreferences("xcertplay_airplay", Context.MODE_PRIVATE)
+        preferences.edit().putBoolean("music_clock_trim", true).commit()
+
+        assertFalse(AirPlayPersistence.loadMusicClockTrim(context))
+        assertFalse(preferences.getBoolean("music_clock_trim", true))
+        assertTrue(preferences.getBoolean("music_clock_trim_safe_default_v1", false))
+
+        // The migration happens once; a deliberate choice afterwards must stick.
+        AirPlayPersistence.saveMusicClockTrim(context, true)
+        assertTrue(AirPlayPersistence.loadMusicClockTrim(context))
     }
 
     @Test fun allThreeClusterForwardingSwitchesAreOnForThisHeadUnit() {

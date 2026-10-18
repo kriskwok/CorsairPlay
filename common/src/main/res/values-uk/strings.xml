@@ -78,7 +78,7 @@
     <string name="status_attaching_ncm">Підключення мережі NCM/AirPlay</string>
     <string name="status_failed">Помилка: %1$s</string>
     <string name="msg_car_hotspot_off">Точку доступу автомобіля «%1$s» вимкнено. Увімкніть її в налаштуваннях автомобіля перед підключенням.</string>
-    <string name="home_public_preview">LINCOLN\u0020·\u0020%1$s</string>
+    <string name="home_public_preview">%1$s\u0020·\u0020%2$s</string>
     <string name="choose_iphone_prefix">Вибрати iPhone ·\u0020</string>
     <string name="audio_saved_value">Збережено: %1$d</string>
     <string name="about_public_preview_prefix">Lincoln\u0020·\u0020%1$s</string>
@@ -92,7 +92,7 @@
     <string name="safe_area_mapping_summary">Безпечна область: %1$d x %2$d у точці (%3$d, %4$d) на екрані %5$d x %6$d</string>
     <string name="settings_android9_compat">Наведені нижче налаштування недоступні та приховані в Android 9 (API 28):\n• Wi-Fi P2P (5 ГГц) — натомість використовується LocalOnlyHotspot.\n• Програмний декодер HEVC — натомість використовується апаратне декодування.</string>
     <string name="settings_mfi_address_hint">Адреса має починатися з http:// або https://. Токен необов’язковий і надсилається як токен авторизації Bearer.</string>
-    <string name="app_name">Lincoln</string>
+    <string name="app_name">CorsairPlay</string>
     <string name="language_section_title">Мова</string>
     <string name="language_app_language">Мова застосунку</string>
     <string name="language_system_default">Мова системи</string>
@@ -102,7 +102,7 @@
     <string name="a_familiar_drive">Знайома подорож.</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">Попереднє з’єднання Wi-Fi Direct ще активне. Скиньте його, щоб підключитися.</string>
     <string name="about">Про застосунок</string>
-    <string name="about_diplay">Про Lincoln</string>
+    <string name="about_diplay">Про CorsairPlay</string>
     <string name="active">Активно</string>
     <string name="advanced_audio_channel_mapping">Розширене налаштування аудіоканалів</string>
     <string name="airplay_icon">Значок AirPlay</string>
@@ -127,7 +127,7 @@
     <string name="automatic_map_setup_adb">Автоматичне налаштування карти · ADB</string>
     <string name="availability_depends_on_your_head_unit_s_startup_settings">Доступність залежить від налаштувань запуску головного пристрою.</string>
     <string name="back">Назад</string>
-    <string name="back_to_diplay">Повернутися до Lincoln</string>
+    <string name="back_to_diplay">Повернутися до CorsairPlay</string>
     <string name="band">Діапазон</string>
     <string name="bluetooth_settings">Налаштування Bluetooth</string>
     <string name="byd_navigation">Навігація BYD</string>
@@ -192,7 +192,7 @@
     <string name="default_placeholder_icon">Типовий значок-заповнювач</string>
     <string name="diagnostic_report_saved">Діагностичний звіт збережено</string>
     <string name="diagnostics">Діагностика</string>
-    <string name="diplay">Lincoln</string>
+    <string name="diplay">CorsairPlay</string>
     <string name="discard_changes_and_exit_settings">Скасувати зміни й вийти з налаштувань</string>
     <string name="disconnect">Відключити</string>
     <string name="discovering_iphone">Пошук iPhone</string>
@@ -689,6 +689,10 @@
     <string name="car_button_icon">Значок</string>
     <string name="car_button_icon_custom">Власний значок</string>
     <string name="car_button_name">Назва</string>
+    <string name="car_button_vehicle_brand">Марка автомобіля</string>
+    <string name="car_button_brand_lincoln">Lincoln</string>
+    <string name="car_button_brand_ford">Ford</string>
+    <string name="car_button_brand_custom">Інша</string>
     <string name="car_button_description">CarPlay показує цей значок і назву у списку застосунків. Натисніть його, щоб повернутися на екран автомобіля. Зміни застосуються під час наступного підключення CarPlay.</string>
     <string name="car_button_saved_next_connection">Збережено. CarPlay покаже новий значок і назву під час наступного підключення.</string>
     <string name="this_head_unit_has_no_image_picker">На цьому головному пристрої немає вибору зображень.</string>
@@ -897,4 +901,11 @@
     <string name="settings_lincoln_cluster_remaining">Залишок відстані й часу на панелі (експериментально)</string>
     <string name="settings_lincoln_cluster_remaining_description">Додатково надсилає загальний залишок відстані й часу. Перевірена панель ігнорує невідомі поля, тому це корисно лише після підтвердження назв полів, які приймає ваша панель.</string>
     <string name="settings_lincoln_cluster_status">Застосунок панелі: %1$s\n%2$s</string>
+    <string name="settings_microphone_without_48khz">Мікрофон: не пропонувати 48 кГц (експериментально)</string>
+    <string name="settings_microphone_without_48khz_description">Голосові повідомлення й дзвінки WeChat можуть записуватися без звуку, коли iPhone відкриває мікрофон із частотою 48 кГц, хоча Siri та дзвінки працюють на нижчих частотах. Тепер мікрофон пропонує не вище 32 кГц, щоб iPhone вибрав нижчу частоту. Перепідключає CarPlay.</string>
+    <string name="settings_carplay_corner_radius_value">%1$d dp</string>
+    <string name="back_to_vehicle_name">Повернутися до %1$s</string>
+    <string name="settings_carplay_corner_radius_description">Округлює кути зображення CarPlay над однотонним тлом головного пристрою. У положенні «Вимк.» кути залишаються прямими.</string>
+    <string name="settings_carplay_corner_radius_off">Вимк.</string>
+    <string name="settings_carplay_corner_radius">Радіус кутів CarPlay</string>
 </resources>

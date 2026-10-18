@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
-    <!-- The car-test build keeps the Lincoln label and nothing else: the BYD demo bridge and the
+    <!-- The car-test build keeps the CorsairPlay label and nothing else: the BYD demo bridge and the
          cluster probe activity are gone with the rest of the BYD-only code. -->
-    <application android:label="Lincoln" tools:replace="android:label" />
+    <application android:label="CorsairPlay" tools:replace="android:label" />
 </manifest>

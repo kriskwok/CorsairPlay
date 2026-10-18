@@ -64,6 +64,7 @@ class WheelKeyService : AccessibilityService() {
     internal var routeActive: () -> Boolean = { CarPlayGlance.snapshot().maneuverType != null }
     internal var requestSiri: () -> Boolean = { CarPlayBackgroundSession.snapshot()?.controller?.requestSiri() == true }
     internal var sendCarPlayMediaKey: (Int) -> Boolean = { CarPlayMediaKeys.onWheelMediaKey(it) }
+    internal var isCarPlayPlaying: () -> Boolean = CarPlayMediaKeys::isPlaying
 
     // With the auto-off setting the joystick ends a while after the last press and when a route starts,
     // so the keys go back to music and volume without a thought.
@@ -241,17 +242,14 @@ class WheelKeyService : AccessibilityService() {
      */
     private fun handleCarPlayMediaKey(event: KeyEvent, physicalKey: PhysicalWheelKey): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
-        val button = when (event.keyCode) {
-            KeyEvent.KEYCODE_MEDIA_NEXT -> CarPlayMediaButton.NEXT
-            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> CarPlayMediaButton.PREVIOUS
-            else -> return false
-        }
+        val button = CarPlayMediaButton.forTrackKey(event.keyCode) ?: return false
         val action = carPlayMediaPresses.filter(
             physicalKey,
             event.action == KeyEvent.ACTION_DOWN,
             event.repeatCount == 0,
         ) {
-            if (!WheelMediaKeySettings.enabled(this) || session() == null || inCall(this)) {
+            if (!WheelMediaKeySettings.enabled(this) || session() == null || inCall(this) ||
+                !isCarPlayPlaying()) {
                 return@filter WheelZoomKeys.Action.PASS
             }
             if (sendCarPlayMediaKey(button)) {

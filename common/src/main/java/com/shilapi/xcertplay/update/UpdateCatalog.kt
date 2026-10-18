@@ -8,18 +8,23 @@ internal data class UpdateRelease(
     val apkName: String,
     val apkUrl: String,
     val checksumsUrl: String,
+    val releaseNotes: String = "",
 )
 
 internal object UpdateCatalog {
     internal const val CHECKSUMS_FILE = "SHA256SUMS.txt"
 
     /** Returns the first published release that carries an APK and its checksums, or null. */
-    internal fun parse(json: String): UpdateRelease? {
+    internal fun parse(json: String): UpdateRelease? = parseAll(json).firstOrNull()
+
+    /** Returns every published release that can be downloaded and verified, newest first. */
+    internal fun parseAll(json: String): List<UpdateRelease> {
         val releases = JSONArray(json)
+        val parsed = mutableListOf<UpdateRelease>()
         for (index in 0 until releases.length()) {
             val release = releases.optJSONObject(index) ?: continue
             if (release.optBoolean("draft")) continue
-            val assets = release.optJSONArray("assets") ?: return null
+            val assets = release.optJSONArray("assets") ?: continue
             var apkName = ""
             var apkUrl = ""
             var checksumsUrl = ""
@@ -33,9 +38,15 @@ internal object UpdateCatalog {
                 }
                 if (name.equals(CHECKSUMS_FILE, ignoreCase = true)) checksumsUrl = url
             }
-            if (apkUrl.isEmpty() || checksumsUrl.isEmpty()) return null
-            return UpdateRelease(release.optString("tag_name"), apkName, apkUrl, checksumsUrl)
+            if (apkUrl.isEmpty() || checksumsUrl.isEmpty()) continue
+            parsed += UpdateRelease(
+                tagName = release.optString("tag_name"),
+                apkName = apkName,
+                apkUrl = apkUrl,
+                checksumsUrl = checksumsUrl,
+                releaseNotes = release.optString("body"),
+            )
         }
-        return null
+        return parsed
     }
 }

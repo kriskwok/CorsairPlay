@@ -11,8 +11,14 @@ import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** Dashboard song; [line] preserves title-only HUD text, [source] selects a note's music icon. */
-internal data class ClusterSong(val text: String, val playing: Boolean, val line: String = text, val source: Int? = null)
+/** Dashboard song; [line] is the raw iAP2 title, [artist] the separate song field some apps provide. */
+internal data class ClusterSong(
+    val text: String,
+    val playing: Boolean,
+    val line: String = text,
+    val source: Int? = null,
+    val artist: String? = null,
+)
 
 /**
  * The CarPlay song for the dashboard, from iAP2 NowPlayingUpdate (0x5001): title (1) and artist (12)
@@ -42,7 +48,9 @@ internal class ClusterSongState {
         runCatching { body.optionalGroup(PLAYBACK)?.optionalU8(STATUS) }.getOrNull()?.let { status ->
             playing = status == STATUS_PLAYING || status == STATUS_SEEK_FORWARD || status == STATUS_SEEK_BACKWARD
         }
-        val next = text(title, artist)?.let { ClusterSong(it, playing, title!!.trim()) }
+        val next = text(title, artist)?.let {
+            ClusterSong(it, playing, title!!.trim(), artist = artist?.trim()?.takeIf(String::isNotEmpty))
+        }
         if (next == last) return null
         last = next
         return next

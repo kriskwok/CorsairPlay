@@ -72,6 +72,7 @@ object AirPlayPersistence {
     private const val KEY_MANUFACTURER = "manufacturer"
     private const val KEY_MODEL = "model"
     private const val KEY_OEM_LABEL = "oem_label"
+    private const val KEY_VEHICLE_BRAND_PRESET = "vehicle_brand_preset"
     private const val KEY_APP_APPEARANCE = "app_appearance"
     private const val KEY_CARPLAY_NIGHT_MODE = "carplay_night_mode"
     private const val KEY_CARPLAY_NIGHT_START = "carplay_night_start_minute"
@@ -84,6 +85,7 @@ object AirPlayPersistence {
     private const val KEY_SPEECH_WITHOUT_8_16_KHZ = "speech_without_8_16_khz"
     private const val KEY_MIC_WITHOUT_48_KHZ = "microphone_without_48_khz"
     private const val KEY_MUSIC_CLOCK_TRIM = "music_clock_trim"
+    private const val KEY_MUSIC_CLOCK_TRIM_SAFE_DEFAULT = "music_clock_trim_safe_default_v1"
     private const val KEY_CAR_BLUETOOTH_AUDIO = "car_bluetooth_audio"
     private const val KEY_CALL_ECHO_CANCELLATION = "call_echo_cancellation"
     private const val KEY_CALL_VOICE_FILTER = "call_voice_filter"
@@ -118,6 +120,7 @@ object AirPlayPersistence {
     private const val KEY_RIGHT_HAND_DRIVE = "right_hand_drive"
     private const val KEY_HIDE_TOP_BAR = "hide_top_bar"
     private const val KEY_HIDE_BOTTOM_BAR = "hide_bottom_bar"
+    private const val KEY_CARPLAY_CORNER_RADIUS_DP = "carplay_corner_radius_dp"
     private const val KEY_HARMAN_FULLSCREEN = "harman_fullscreen"
     private const val KEY_SAFE_AREA_DRAW_OUTSIDE = "safe_area_draw_outside"
     private const val KEY_MAIN_DISPLAY_DISABLE_SAFE_AREA = "main_display_disable_safe_area"
@@ -140,6 +143,9 @@ object AirPlayPersistence {
     const val DEFAULT_MODEL = "Lincoln"
     // The name CarPlay shows under the "back to the car" button.
     const val DEFAULT_OEM_LABEL = "Lincoln"
+    const val DEFAULT_CARPLAY_CORNER_RADIUS_DP = 0
+    const val MAX_CARPLAY_CORNER_RADIUS_DP = 48
+    const val CARPLAY_CORNER_RADIUS_STEP_DP = 1
     const val DEFAULT_MFI_I2C_PATH = "/dev/i2c-1"
     /** Ambient light threshold this fork ships with for automatic day/night switching. */
     private const val DEFAULT_AMBIENT_LUX = 120
@@ -672,9 +678,42 @@ object AirPlayPersistence {
             // iOS hides the car icon without a label.
             .orEmpty().ifBlank { DEFAULT_OEM_LABEL }
 
+    fun loadStoredOemLabel(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_OEM_LABEL, null)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
     fun saveOemLabel(context: Context, oemLabel: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_OEM_LABEL, oemLabel)
+            .apply()
+    }
+
+    fun loadVehicleBrandPreset(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_VEHICLE_BRAND_PRESET, null)
+
+    fun saveVehicleBrandPreset(context: Context, preset: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_VEHICLE_BRAND_PRESET, preset)
+            .apply()
+    }
+
+    fun sanitizeCarPlayCornerRadiusDp(radiusDp: Int): Int {
+        val clamped = radiusDp.coerceIn(0, MAX_CARPLAY_CORNER_RADIUS_DP)
+        return ((clamped + CARPLAY_CORNER_RADIUS_STEP_DP / 2) / CARPLAY_CORNER_RADIUS_STEP_DP *
+            CARPLAY_CORNER_RADIUS_STEP_DP).coerceIn(0, MAX_CARPLAY_CORNER_RADIUS_DP)
+    }
+
+    fun loadCarPlayCornerRadiusDp(context: Context): Int = sanitizeCarPlayCornerRadiusDp(
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_CARPLAY_CORNER_RADIUS_DP, DEFAULT_CARPLAY_CORNER_RADIUS_DP),
+    )
+
+    fun saveCarPlayCornerRadiusDp(context: Context, radiusDp: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_CARPLAY_CORNER_RADIUS_DP, sanitizeCarPlayCornerRadiusDp(radiusDp))
             .apply()
     }
 
@@ -773,20 +812,30 @@ object AirPlayPersistence {
 
     /**
      * Trim the music track's playback rate to follow a head unit whose audio clock drifts, so music
-     * does not run dry and pause. On by default; off leaves the native rate untouched.
+     * does not run dry and pause. This is off by default because an off-rate track keeps the
+     * platform resampler active for the whole stream; some Ford/Lincoln firmware renders that as a
+     * faint periodic artifact under music. The setting remains available for rare drifting clocks.
      *
-     * Off by default on the Lincoln/Ford Freescale head units: the trim asks the music track for a
-     * slightly different rate about once a second, which holds the platform resampler on for the
-     * whole stream, and that firmware renders it as a faint periodic noise under music. Those units
-     * are the ones that reported it, so they start with the native rate; the setting can turn it back
-     * on if a drifting clock ever pauses music there.
+     * Builds before 0.2.25-rc2 could save the old enabled default on a unit that was not detected
+     * as Lincoln/Ford. Migrate that value once, but keep any later explicit choice.
      */
-    fun loadMusicClockTrim(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_MUSIC_CLOCK_TRIM, !com.shilapi.xcertplay.lincoln.LincolnVehicleVideo.eligible())
+    fun loadMusicClockTrim(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!preferences.getBoolean(KEY_MUSIC_CLOCK_TRIM_SAFE_DEFAULT, false)) {
+            preferences.edit()
+                .putBoolean(KEY_MUSIC_CLOCK_TRIM, false)
+                .putBoolean(KEY_MUSIC_CLOCK_TRIM_SAFE_DEFAULT, true)
+                .apply()
+            return false
+        }
+        return preferences.getBoolean(KEY_MUSIC_CLOCK_TRIM, false)
+    }
 
     fun saveMusicClockTrim(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_MUSIC_CLOCK_TRIM, enabled).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_MUSIC_CLOCK_TRIM, enabled)
+            .putBoolean(KEY_MUSIC_CLOCK_TRIM_SAFE_DEFAULT, true)
+            .apply()
     }
 
     /** Offer no CarPlay audio, so the iPhone keeps audio on its Bluetooth link with the car; applies at reconnect. */

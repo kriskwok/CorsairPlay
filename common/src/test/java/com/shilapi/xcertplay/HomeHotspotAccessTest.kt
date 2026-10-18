@@ -100,7 +100,7 @@ class HomeHotspotAccessTest {
         val home = openHome().get()
         awaitResult(home, CarHotspotTethering.Result.PERMISSION_REQUIRED)
         val shown = texts(home)
-        assertTrue(shown.toString(), home.getString(R.string.settings_write_settings_missing) in shown)
+        assertTrue(shown.toString(), VehicleBranding.text(home, R.string.settings_write_settings_missing) in shown)
         assertTrue(shown.toString(), home.getString(R.string.settings_write_settings_allow) in shown)
         // The ADB sentence and the car settings button belong to BYD units.
         assertFalse(shown.toString(), home.getString(R.string.hotspot_control_missing) in shown)
@@ -153,7 +153,10 @@ class HomeHotspotAccessTest {
         controller.pause().stop().restart().start().resume()
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(CarHotspotTethering.Result.PERMISSION_REQUIRED, result(home))
-        assertTrue(texts(home).toString(), home.getString(R.string.settings_write_settings_missing) in texts(home))
+        assertTrue(
+            texts(home).toString(),
+            VehicleBranding.text(home, R.string.settings_write_settings_missing) in texts(home),
+        )
         assertEquals(0, PlatformStart.calls.get())
     }
 
