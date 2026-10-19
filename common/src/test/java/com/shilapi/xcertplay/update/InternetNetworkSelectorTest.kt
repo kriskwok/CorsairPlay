@@ -11,7 +11,14 @@ import org.robolectric.annotation.Config
 @Config(sdk = [29])
 class InternetNetworkSelectorTest {
     @Test fun requiresBothInternetAndValidation() {
-        assertFalse(InternetNetworkSelector.isValidatedInternet(hasInternet = true, validated = false))
-        assertTrue(InternetNetworkSelector.isValidatedInternet(hasInternet = true, validated = true))
+        assertFalse(InternetNetworkSelector.isValidatedInternet(
+            hasInternet = true, validated = false, vpn = false,
+        ))
+        assertTrue(InternetNetworkSelector.isValidatedInternet(
+            hasInternet = true, validated = true, vpn = false,
+        ))
+        assertFalse(InternetNetworkSelector.isValidatedInternet(
+            hasInternet = true, validated = true, vpn = true,
+        ))
     }
 }

@@ -2,6 +2,7 @@ package com.shilapi.xcertplay.airplay
 
 import android.util.Log
 import com.shilapi.xcertplay.mfi.MfiAuthenticator
+import com.shilapi.xcertplay.shared.BuildConfig
 import com.shilapi.xcertplay.transport.BlockingDuplexByteStream
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -338,7 +339,7 @@ class AirPlaySession(
         val sendStartNs = System.nanoTime()
         val sent = sendHidReport(AirPlayHid.TOUCH_HID_UID, report)
         if (sent) com.shilapi.xcertplay.media.TouchLatencyProbe.onTouchSent(sendStartNs, System.nanoTime() - sendStartNs)
-        if (sent && firstTouchSendLogged.compareAndSet(false, true)) {
+        if (BuildConfig.DEBUG && sent && firstTouchSendLogged.compareAndSet(false, true)) {
             val first = scaled.firstOrNull()
             Log.i(
                 TAG,
@@ -568,12 +569,14 @@ class AirPlaySession(
                     }
                     debugLog("airplay /info request=$requestInfo")
                 }
-                Log.i(
-                    TAG,
-                    "airplay /info features=${info["features"]} " +
-                        "audioFormats=${(info["audioFormats"] as? List<*>)?.size ?: 0} " +
-                        "audioLatencies=${(info["audioLatencies"] as? List<*>)?.size ?: 0}",
-                )
+                if (BuildConfig.DEBUG) {
+                    Log.i(
+                        TAG,
+                        "airplay /info features=${info["features"]} " +
+                            "audioFormats=${(info["audioFormats"] as? List<*>)?.size ?: 0} " +
+                            "audioLatencies=${(info["audioLatencies"] as? List<*>)?.size ?: 0}",
+                    )
+                }
                 debugLog(
                     "airplay /info videoInCar=${config.videoInCar} " +
                         "videoPlaybackAllowed=${if (config.videoInCar) VideoInCar.allowed else "not-offered"}",
@@ -610,6 +613,7 @@ class AirPlaySession(
     }
 
     private fun debugLog(message: String, uiVisible: Boolean = true) {
+        if (!BuildConfig.DEBUG) return
         Log.i(TAG, message)
         if (!uiVisible) return
         try {
@@ -620,6 +624,7 @@ class AirPlaySession(
     }
 
     private fun trace(message: String) {
+        if (!BuildConfig.DEBUG) return
         try {
             listener.onDebugLog("TRACE $message")
         } catch (error: Exception) {

@@ -24,6 +24,7 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.MediaFormat
 import android.net.Uri
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -89,11 +90,14 @@ import com.shilapi.xcertplay.update.UpdateAvailability
 import com.shilapi.xcertplay.update.UpdateCatalog
 import com.shilapi.xcertplay.update.UpdateChecksums
 import com.shilapi.xcertplay.update.UpdateClient
+import com.shilapi.xcertplay.update.InternetNetworkSelector
 import com.shilapi.xcertplay.update.UpdateRelease
 import com.shilapi.xcertplay.update.UpdateReleaseLookup
 import com.shilapi.xcertplay.update.UpdateReleaseNotes
 import java.io.File
 import java.io.IOException
+import java.net.URL
+import java.net.URLConnection
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -252,6 +256,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private var updateRelease: UpdateRelease? = null
     private var updateFile: File? = null
     private var updateMessage: String? = null
+    private var updatePromptDialog: AlertDialog? = null
+    private var installAfterPromptTag: String? = null
+    private var activityResumed = false
     @Volatile private var historyStage = HistoryStage.IDLE
     @Volatile private var historyProgress: Int? = null
     @Volatile private var historyGeneration = 0
@@ -381,6 +388,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        HighDeBackgroundCleaner.start(this)
         // Back on the home page finishes this activity while the session runs on, so the icon lands here.
         if (savedInstanceState == null && isLauncherIntent(intent) && CarPlayBackgroundSession.hasSession()) {
             openProjection(); finish(); return
@@ -444,6 +452,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         // CarPlay carry a "page" extra, which isLauncherIntent rejects.
         if (isLauncherIntent(intent) && CarPlayBackgroundSession.hasSession()) {
             page = "home"; render(); openProjection(); return
+        }
+        if (isLauncherIntent(intent) && PreattachedIphone.isAttached(this) && setupError == null) {
+            page = "home"; render(); handler.post { connect(false) }; return
         }
         page = intent.getStringExtra("page") ?: "home"; render()
         automaticVehicleValidationStarted = false
@@ -523,6 +534,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     override fun onResume() {
         super.onResume()
+        activityResumed = true
         WheelKeyService.restoreIfNeeded(this)
         applyFullscreenMode()
         // Returning from another activity can bring the head unit's own density back.
@@ -542,17 +554,34 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         if (!initialLaunch && !adbSwitchChangePending && !pausedForAdbSwitchChange &&
             (page == "home" || page == "settings" || page == "connection" || page == "setup")) render()
         startAppearanceUpdates()
+        val cachedUpdate = UpdateAvailability.available(this, version())
+        if (cachedUpdate?.tagName != availableUpdate?.tagName) {
+            availableUpdate = cachedUpdate
+            render()
+        }
+        cachedUpdate?.let(::maybeShowUpdatePrompt)
+        resumePendingImmediateInstall()
         pausedForAdbSwitchChange = false
         if (initialLaunch) {
             initialLaunch = false
             startCarHotspotOnLaunch()
+            val preattachedIphone = PreattachedIphone.isAttached(this)
             if (setupError == null && !CarPlayBackgroundSession.hasSession() &&
-                DiPlayPreferences.autoConnect(this) && intent.getStringExtra("page") == null && page != "setup") {
-                handler.post { connect(DiPlayPreferences.autoConnectWireless(this)) }
+                (preattachedIphone || DiPlayPreferences.autoConnect(this)) &&
+                intent.getStringExtra("page") == null && page != "setup") {
+                handler.post {
+                    connect(
+                        wireless = if (preattachedIphone) false
+                        else DiPlayPreferences.autoConnectWireless(this),
+                    )
+                }
             }
         }
     }
     override fun onPause() {
+        activityResumed = false
+        updatePromptDialog?.dismiss()
+        updatePromptDialog = null
         appearanceUpdatesResumed = false
         appearanceObserverRemoval?.invoke()
         appearanceObserverRemoval = null
@@ -2005,6 +2034,14 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         // Opt-in controls that can cost sound or video on some head units.
         filteredSection(content, SettingsSection.ADVANCED_MEDIA,
             brandString(R.string.settings_advanced_media), R.drawable.ic_dp_advanced) { card ->
+            toggle(
+                card,
+                brandString(R.string.settings_clean_autonavi_background),
+                brandString(R.string.settings_clean_autonavi_background_description),
+                HighDeBackgroundCleaner.enabled(this),
+            ) {
+                HighDeBackgroundCleaner.setEnabled(this, it)
+            }
             if (Build.VERSION.SDK_INT == 32) {
                 toggle(card, brandString(R.string.settings_hide_byd_call_popup),
                     brandString(R.string.settings_hide_byd_call_popup_description),
@@ -2775,6 +2812,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                             updateStage = UpdateStage.AVAILABLE
                         }
                         render()
+                        release?.let(::maybeShowUpdatePrompt)
                     },
                     { failure ->
                         Log.w("DiPlay-Update", "update check failed", failure)
@@ -2788,7 +2826,19 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun latestRelease(): UpdateRelease? {
-        return UpdateReleaseLookup.latest(version(), userAgent())
+        return UpdateReleaseLookup.latest(version(), userAgent(), ::openUpdateConnection)
+    }
+
+    /**
+     * The CarPlay VPN only allows this app through its tunnel. Bind update requests to an
+     * underlying Wi-Fi or mobile network so GitHub and its mirror remain reachable.
+     */
+    private fun openUpdateConnection(url: URL): URLConnection {
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        val network = connectivity?.let {
+            runCatching { InternetNetworkSelector.select(it) }.getOrNull()
+        }
+        return network?.openConnection(url) ?: url.openConnection()
     }
 
     private fun loadHistoryReleases() {
@@ -2798,7 +2848,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         historyMessage = null
         render()
         Thread({
-            val outcome = runCatching { UpdateReleaseLookup.history(userAgent()) }
+            val outcome = runCatching {
+                UpdateReleaseLookup.history(userAgent(), ::openUpdateConnection)
+            }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 historyStage = HistoryStage.IDLE
@@ -2885,15 +2937,26 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             val directory = File(cacheDir, "history/${java.util.UUID.randomUUID()}")
             val outcome = runCatching {
                 val checksumsFile = File(directory, UpdateCatalog.CHECKSUMS_FILE)
-                UpdateClient.download(release.checksumsUrl, checksumsFile) { _, _ -> }
+                UpdateClient.download(
+                    UpdateClient.checksumsUrls(release),
+                    checksumsFile,
+                    onProgress = { _, _ -> },
+                    openConnection = ::openUpdateConnection,
+                )
                 val apkFile = File(directory, release.apkName)
-                UpdateClient.download(release.apkUrl, apkFile) { written, total ->
-                    val percent = total?.takeIf { it > 0 }?.let { (written * 100 / it).toInt() } ?: return@download
-                    if (percent != historyProgress) {
-                        historyProgress = percent
-                        refreshHistoryUi(generation)
-                    }
-                }
+                UpdateClient.download(
+                    UpdateClient.apkUrls(release),
+                    apkFile,
+                    onProgress = { written, total ->
+                        val percent = total?.takeIf { it > 0 }?.let { (written * 100 / it).toInt() }
+                            ?: return@download
+                        if (percent != historyProgress) {
+                            historyProgress = percent
+                            refreshHistoryUi(generation)
+                        }
+                    },
+                    openConnection = ::openUpdateConnection,
+                )
                 historyStage = HistoryStage.VERIFYING
                 refreshHistoryUi(generation)
                 val expected = UpdateChecksums.parse(checksumsFile.readText())
@@ -2935,12 +2998,61 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         render()
     }
 
+    private fun maybeShowUpdatePrompt(release: UpdateRelease) {
+        if (!activityResumed || isFinishing || isDestroyed) return
+        if (updatePromptDialog?.isShowing == true) return
+        if (!UpdateAvailability.shouldPrompt(this, release)) return
+        val notes = UpdateReleaseNotes.plainText(release.releaseNotes)
+            .ifBlank { brandString(R.string.update_history_notes_missing) }
+        val dialog = appDialogBuilder()
+            .setTitle(brandString(R.string.update_prompt_title))
+            .setMessage(brandString(R.string.update_prompt_message, version(), release.tagName, notes))
+            .setPositiveButton(brandString(R.string.update_prompt_now)) { _, _ ->
+                UpdateAvailability.markPrompted(this, release)
+                startImmediateUpdate(release)
+            }
+            .setNegativeButton(brandString(R.string.close)) { _, _ ->
+                UpdateAvailability.markPrompted(this, release)
+            }
+            .setOnCancelListener {
+                UpdateAvailability.markPrompted(this, release)
+            }
+            .create()
+        dialog.setOnDismissListener {
+            if (updatePromptDialog === dialog) updatePromptDialog = null
+        }
+        updatePromptDialog = dialog
+        dialog.show()
+    }
+
+    private fun startImmediateUpdate(release: UpdateRelease) {
+        availableUpdate = release
+        updateRelease = release
+        updateMessage = null
+        updateStage = UpdateStage.IDLE
+        installAfterPromptTag = release.tagName
+        page = "settings"
+        settingsCategory = SettingsCategory.ABOUT
+        render()
+        downloadUpdate(autoInstall = true)
+    }
+
+    private fun resumePendingImmediateInstall() {
+        val tag = installAfterPromptTag ?: return
+        if (!activityResumed || updateStage != UpdateStage.READY || updateFile == null ||
+            updateRelease?.tagName != tag) {
+            return
+        }
+        installAfterPromptTag = null
+        installUpdate()
+    }
+
     private fun scheduleBackgroundUpdateChecks() {
         runCatching { BackgroundUpdateScheduler.schedule(applicationContext) }
             .onFailure { Log.i("DiPlay-Update", "background update scheduling unavailable", it) }
     }
 
-    private fun downloadUpdate() {
+    private fun downloadUpdate(autoInstall: Boolean = false) {
         if (updateRelease == null) return
         if (historyStage == HistoryStage.DOWNLOADING || historyStage == HistoryStage.VERIFYING) return
         lateinit var release: UpdateRelease
@@ -2958,15 +3070,26 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 // The cached release can be a day old. Download the newest one.
                 release = latestRelease() ?: throw IOException(brandString(R.string.update_up_to_date))
                 val checksumsFile = File(directory, UpdateCatalog.CHECKSUMS_FILE)
-                UpdateClient.download(release.checksumsUrl, checksumsFile) { _, _ -> }
+                UpdateClient.download(
+                    UpdateClient.checksumsUrls(release),
+                    checksumsFile,
+                    onProgress = { _, _ -> },
+                    openConnection = ::openUpdateConnection,
+                )
                 val apkFile = File(directory, release.apkName)
-                UpdateClient.download(release.apkUrl, apkFile) { written, total ->
-                    val percent = total?.takeIf { it > 0 }?.let { (written * 100 / it).toInt() } ?: return@download
-                    if (percent != updateProgress) {
-                        updateProgress = percent
-                        refreshUpdateUi(generation)
-                    }
-                }
+                UpdateClient.download(
+                    UpdateClient.apkUrls(release),
+                    apkFile,
+                    onProgress = { written, total ->
+                        val percent = total?.takeIf { it > 0 }?.let { (written * 100 / it).toInt() }
+                            ?: return@download
+                        if (percent != updateProgress) {
+                            updateProgress = percent
+                            refreshUpdateUi(generation)
+                        }
+                    },
+                    openConnection = ::openUpdateConnection,
+                )
                 updateStage = UpdateStage.VERIFYING
                 refreshUpdateUi(generation)
                 val expected = UpdateChecksums.parse(checksumsFile.readText())
@@ -2989,10 +3112,13 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                         updateSavedPath = saved?.path
                         updateSavedUri = saved?.uri
                         updateStage = UpdateStage.READY
+                        if (autoInstall) installAfterPromptTag = release.tagName
                         render()
+                        if (autoInstall) resumePendingImmediateInstall()
                     },
                     { failure ->
                         Log.w("DiPlay-Update", "update download failed", failure)
+                        installAfterPromptTag = null
                         updateMessage = failure.message ?: brandString(R.string.update_failed)
                         updateStage = UpdateStage.FAILED
                         render()

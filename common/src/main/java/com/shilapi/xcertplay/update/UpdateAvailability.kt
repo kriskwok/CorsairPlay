@@ -16,6 +16,7 @@ internal object UpdateAvailability {
     private const val LAST_RESULT_MILLIS = "last_result_millis"
     private const val LAST_INSTALL = "last_install"
     private const val LAST_INSTALL_MILLIS = "last_install_millis"
+    private const val PROMPTED_TAG = "prompted_tag"
 
     internal const val CHECK_INTERVAL_MILLIS = 24L * 60 * 60 * 1000
 
@@ -78,6 +79,14 @@ internal object UpdateAvailability {
 
     fun recordInstall(context: Context, nowMillis: Long, outcome: String) {
         preferences(context).edit().putString(LAST_INSTALL, outcome).putLong(LAST_INSTALL_MILLIS, nowMillis).apply()
+    }
+
+    fun shouldPrompt(context: Context, release: UpdateRelease): Boolean =
+        release.tagName.isNotBlank() &&
+            preferences(context).getString(PROMPTED_TAG, null) != release.tagName
+
+    fun markPrompted(context: Context, release: UpdateRelease) {
+        preferences(context).edit().putString(PROMPTED_TAG, release.tagName).apply()
     }
 
     /** One diagnostic line. Ages are relative so the report needs no clock or locale. */

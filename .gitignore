@@ -22,6 +22,8 @@ captures/
 .DS_Store
 Thumbs.db
 *.log
+__pycache__/
+*.pyc
 /.idea
 
 # Local beta credentials and release signing (never commit)

@@ -34,19 +34,38 @@ class UpdateCatalogTest {
     """.trimIndent()
 
     @Test
-    fun skipsDraftsAndReturnsTheFirstPublishedRelease() {
-        val release = UpdateCatalog.parse(releaseJson)
-        assertEquals("v0.2.14", release?.tagName)
-        assertEquals("DiPlay-0.2.14.apk", release?.apkName)
+    fun skipsDraftsAndPrereleases() {
+        assertNull(UpdateCatalog.parse(releaseJson))
+    }
+
+    @Test
+    fun returnsTheHighestStableRelease() {
+        val release = UpdateCatalog.parse(
+            """
+                [
+                  {"tag_name": "v0.2.18-rc1", "draft": false, "prerelease": false, "assets": [
+                    {"name": "CorsairPlay-0.2.18-rc1.apk", "browser_download_url": "https://example.com/v18rc.apk"},
+                    {"name": "SHA256SUMS.txt", "browser_download_url": "https://example.com/v18rc.sum"}
+                  ]},
+                  {"tag_name": "v0.2.16", "draft": false, "prerelease": false, "body": "Stable changes", "assets": [
+                    {"name": "CorsairPlay-0.2.16.apk", "browser_download_url": "https://example.com/v16.apk"},
+                    {"name": "SHA256SUMS.txt", "browser_download_url": "https://example.com/v16.sum"}
+                  ]}
+                ]
+            """.trimIndent(),
+        )
+
+        assertEquals("v0.2.16", release?.tagName)
+        assertEquals("CorsairPlay-0.2.16.apk", release?.apkName)
         assertEquals(
-            "https://github.com/shihabal3amri/DiPlay/releases/download/v0.2.14/DiPlay-0.2.14.apk",
+            "https://example.com/v16.apk",
             release?.apkUrl,
         )
         assertEquals(
-            "https://github.com/shihabal3amri/DiPlay/releases/download/v0.2.14/SHA256SUMS.txt",
+            "https://example.com/v16.sum",
             release?.checksumsUrl,
         )
-        assertEquals("### Fixed\n- Release notes are visible", release?.releaseNotes)
+        assertEquals("Stable changes", release?.releaseNotes)
     }
 
     @Test

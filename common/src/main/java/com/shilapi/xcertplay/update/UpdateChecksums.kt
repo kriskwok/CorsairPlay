@@ -30,7 +30,9 @@ internal object UpdateChecksums {
     }
 
     internal fun matches(expected: Map<String, String>, fileName: String, actualHex: String): Boolean {
-        val wanted = expected[fileName] ?: return false
+        val wanted = expected[fileName] ?: expected.entries.firstOrNull { (listedName, _) ->
+            listedName.substringAfterLast('/').substringAfterLast('\\') == fileName
+        }?.value ?: return false
         return MessageDigest.isEqual(wanted.lowercase().toByteArray(), actualHex.lowercase().toByteArray())
     }
 }

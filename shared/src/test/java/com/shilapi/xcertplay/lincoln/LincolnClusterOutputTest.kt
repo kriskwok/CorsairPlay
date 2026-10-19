@@ -46,13 +46,13 @@ class LincolnClusterOutputTest {
         // Route start / reroute sends NoRouteSet for a moment. The card must stay.
         send(ended())
         assertFalse("A momentary end must not clear the card", states().contains(LincolnClusterProtocol.STATE_OFF))
-        // Even a second later, with the same end repeated, the card is still held.
-        now += 1_000_000_000L
+        // A short NoRouteSet blip is still ignored.
+        now += 500_000_000L
         send(ended())
         assertFalse(states().contains(LincolnClusterProtocol.STATE_OFF))
 
-        // Once the end has held for the settle window, the card is cleared exactly once.
-        now += 2_000_000_000L
+        // Once the end has held for one second, the card is cleared promptly.
+        now += 500_000_000L
         send(ended())
         assertTrue(states().contains(LincolnClusterProtocol.STATE_OFF))
     }

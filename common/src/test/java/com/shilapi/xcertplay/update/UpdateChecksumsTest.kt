@@ -49,4 +49,19 @@ class UpdateChecksumsTest {
         assertFalse(UpdateChecksums.matches(checksums, "other.apk", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"))
         assertFalse(UpdateChecksums.matches(checksums, "DiPlay-0.2.14.apk", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"))
     }
+
+    @Test
+    fun matchesWhenTheChecksumFileUsesAnAbsolutePath() {
+        val checksums = mapOf(
+            "/tmp/CorsairPlay-0.2.26.apk" to
+                "556f19600d25788828b3f5dc6b854969547e47757af87b85f59d4dafb8fe5bc8",
+        )
+        assertTrue(
+            UpdateChecksums.matches(
+                checksums,
+                "CorsairPlay-0.2.26.apk",
+                "556f19600d25788828b3f5dc6b854969547e47757af87b85f59d4dafb8fe5bc8",
+            ),
+        )
+    }
 }

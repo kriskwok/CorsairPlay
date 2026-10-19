@@ -21,8 +21,9 @@ internal object InternetNetworkSelector {
         isValidatedInternet(
             hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
             validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+            vpn = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN),
         )
 
-    internal fun isValidatedInternet(hasInternet: Boolean, validated: Boolean): Boolean =
-        hasInternet && validated
+    internal fun isValidatedInternet(hasInternet: Boolean, validated: Boolean, vpn: Boolean): Boolean =
+        hasInternet && validated && !vpn
 }

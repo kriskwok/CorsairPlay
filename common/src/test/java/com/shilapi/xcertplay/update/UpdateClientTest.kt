@@ -107,4 +107,49 @@ class UpdateClientTest {
             assertTrue(!destination.exists())
         }
     }
+
+    @Test
+    fun downloadsFromTheFallbackWhenThePrimarySourceFails() {
+        val payload = "fallback apk".toByteArray()
+        server.createContext("/github") { exchange ->
+            exchange.sendResponseHeaders(503, -1)
+            exchange.close()
+        }
+        server.createContext("/mirror") { exchange ->
+            exchange.sendResponseHeaders(200, payload.size.toLong())
+            exchange.responseBody.use { it.write(payload) }
+        }
+        val destination = File(temporaryFolder.root, "update/Derived.apk")
+
+        UpdateClient.download(
+            listOf("$root/github", "$root/mirror"),
+            destination,
+        ) { _, _ -> }
+
+        assertEquals(payload.toList(), destination.readBytes().toList())
+    }
+
+    @Test
+    fun downloadUsesTheSuppliedNetworkConnectionFactory() {
+        server.createContext("/selected-network-download") { exchange ->
+            val payload = "selected network".toByteArray()
+            exchange.sendResponseHeaders(200, payload.size.toLong())
+            exchange.responseBody.use { it.write(payload) }
+        }
+        val selected = AtomicBoolean()
+        val destination = File(temporaryFolder.root, "update/selected.apk")
+
+        UpdateClient.download(
+            listOf("$root/selected-network-download"),
+            destination,
+            onProgress = { _, _ -> },
+            openConnection = { url ->
+                selected.set(true)
+                url.openConnection()
+            },
+        )
+
+        assertTrue(selected.get())
+        assertEquals("selected network", destination.readText())
+    }
 }

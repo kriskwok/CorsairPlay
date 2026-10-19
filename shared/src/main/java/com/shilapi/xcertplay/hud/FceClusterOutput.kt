@@ -219,13 +219,12 @@ internal object FceManeuverCodes {
         }
     }
 
-    /**
-     * Distance as the driver reads it on the iPhone: whole 10 m below 1 km, whole 100 m above, so
-     * the cluster's own kilometre formatting shows "1.5 km" rather than the exact 1,530 m.
-     */
-    fun distance(meters: Int): Int {
+    /** Five-metre formatting below 1 km by default, or Apple's raw value in raw mode. */
+    fun distance(
+        meters: Int,
+        precision: ClusterDistancePrecision = ClusterDistancePrecision.configured,
+    ): Int {
         val m = meters.coerceAtLeast(0)
-        val step = if (m < 1000) 10 else 100
-        return ((m + step / 2) / step) * step
+        return precision.apply(m, if (m < 1000) 5 else 100)
     }
 }

@@ -2,11 +2,14 @@ package com.shilapi.xcertplay.update
 
 internal object UpdateVersion {
     private val TRIPLE = Regex("(\\d+)\\.(\\d+)\\.(\\d+)")
+    private val STABLE = Regex("^v?(\\d+)\\.(\\d+)\\.(\\d+)$")
 
     internal fun parse(value: String): Triple<Int, Int, Int>? =
         TRIPLE.find(value)?.let { match ->
             Triple(match.groupValues[1].toInt(), match.groupValues[2].toInt(), match.groupValues[3].toInt())
         }
+
+    internal fun isStable(value: String): Boolean = STABLE.matches(value)
 
     internal fun isNewer(remote: String, installed: String): Boolean {
         val target = parse(remote) ?: return false

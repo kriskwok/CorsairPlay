@@ -37,10 +37,22 @@ class CarPlayNightModeControllerTest {
         }
     }
 
-    private class Fixture(initialNight: Boolean = false, val light: Light = Light()) {
+    private class Fixture(
+        initialNight: Boolean = false,
+        val light: Light = Light(),
+        minuteOfDay: Int = 12 * 60,
+    ) {
         val clock = Clock()
         val output = mutableListOf<Boolean>()
-        val controller = CarPlayNightModeController(light, clock, initialNight, output::add)
+        val controller = CarPlayNightModeController(
+            light,
+            clock,
+            initialNight,
+            output::add,
+            object : NightTimeSource {
+                override fun snapshot() = NightTimeSnapshot(minuteOfDay, 60_000)
+            },
+        )
         init {
             controller.configure(CarPlayNightMode.AMBIENT, initialNight, AmbientLightThreshold(50), 5)
             controller.resume(initialNight)
@@ -143,16 +155,62 @@ class CarPlayNightModeControllerTest {
         assertEquals(1, f.light.starts)
     }
 
-    @Test fun missingOrFailedSensorFallsBackToSystemAndCanRetryOnResume() {
+    @Test fun missingOrFailedSensorUsesTimeFallbackInsteadOfLockedSystemNight() {
         for (light in listOf(Light(available = false), Light(succeeds = false))) {
-            val f = Fixture(light = light)
+            val f = Fixture(initialNight = true, light = light)
+            assertFalse(f.controller.night)
             f.controller.systemChanged(true)
-            assertTrue(f.controller.night)
+            assertFalse(f.controller.night)
             f.controller.pause()
             f.controller.resume(false)
             assertFalse(f.controller.night)
+            assertEquals(1, f.clock.tasks.size)
+            f.controller.pause()
             assertTrue(f.clock.tasks.isEmpty())
         }
+    }
+
+    @Test fun zeroOnlyOnChangeSensorDoesNotKeepTheHeadUnitInNightMode() {
+        val f = Fixture(initialNight = true)
+        f.light.emit(0f)
+        f.clock.advance(1_499)
+        assertTrue(f.controller.night)
+        f.clock.advance(1)
+        assertFalse(f.controller.night)
+        assertEquals(listOf(false), f.output)
+    }
+
+    @Test fun zeroIsTrustedAfterTheSensorHasProducedARealReading() {
+        val f = Fixture(initialNight = false)
+        f.light.emit(100f)
+        assertFalse(f.controller.night)
+        f.light.emit(0f)
+        f.clock.advance(4_999)
+        assertFalse(f.controller.night)
+        f.clock.advance(1)
+        assertTrue(f.controller.night)
+    }
+
+    @Test fun timeFallbackKeepsRunningWhenTheSensorNeverReports() {
+        val clock = Clock()
+        var minute = 17 * 60 + 59
+        val controller = CarPlayNightModeController(
+            Light(available = false),
+            clock,
+            true,
+            onNightChanged = {},
+            timeSource = object : NightTimeSource {
+                override fun snapshot() = NightTimeSnapshot(minute, 60_000)
+            },
+        )
+        controller.configure(CarPlayNightMode.AMBIENT, true)
+        controller.resume(true)
+        assertFalse(controller.night)
+        minute = 18 * 60
+        clock.advance(60_000)
+        assertTrue(controller.night)
+        controller.pause()
+        assertTrue(clock.tasks.isEmpty())
     }
 
     @Test fun ambientIgnoresSystemChangesAndKeepsLastStateWhenResumed() {

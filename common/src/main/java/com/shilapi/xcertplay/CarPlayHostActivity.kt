@@ -105,6 +105,7 @@ import com.shilapi.xcertplay.network.WirelessStartupPolicy
 import com.shilapi.xcertplay.orchestration.CarPlayStatus
 import com.shilapi.xcertplay.orchestration.CarPlayTransport
 import com.shilapi.xcertplay.orchestration.ManualHotspotBand
+import com.shilapi.xcertplay.shared.BuildConfig
 import com.shilapi.xcertplay.orchestration.ManualHotspotSecurity
 import com.shilapi.xcertplay.orchestration.MfiTarget
 import com.shilapi.xcertplay.orchestration.WirelessHotspotMode
@@ -548,6 +549,11 @@ class CarPlayHostActivity : ComponentActivity() {
     private var startAfterHandshakeReset = false
     private var restartGeneration = 0
     private var reconnectScheduled = false
+    // How often the current controller reached its control loop, and whether a loss came after the
+    // last time. A retry scheduled before the count went up leaves the attempt alone only while it is
+    // still running when the retry fires.
+    private var controlRunningCount = 0
+    private var lossSinceControlRunning = false
     private var requestedSmallWindowForStream: Boolean? = null
     @Volatile private var adbNaviMode: com.shilapi.xcertplay.hud.BydClusterNaviMode? = null
     private var sessionLog: SessionLogFile? = null
@@ -730,6 +736,7 @@ class CarPlayHostActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        HighDeBackgroundCleaner.start(this)
         NavigationWidgetUpdater.attach(applicationContext)
         com.shilapi.xcertplay.lincoln.LincolnClusterOutput.attach(applicationContext)
         CarPlayCallKeys.install(applicationContext)
@@ -1007,16 +1014,13 @@ class CarPlayHostActivity : ComponentActivity() {
         if (isIphoneUsbAttachment(intent)) {
             requestHostTaskToFront()
             refreshUsbAttachmentAppearance()
-            if (wirelessEnabled) {
-                if (menuOpen) cancelSettingsEdits()
-                AirPlayPersistence.saveWirelessEnabled(this, false)
-                wirelessEnabled = false
-                wirelessPermissionsReady = true
-                if (controller != null) {
-                    restartCarPlay("switching to USB")
-                }
-                requestStartupPrerequisites()
-            } else if (controller == null) {
+            if (menuOpen) cancelSettingsEdits()
+            AirPlayPersistence.saveWirelessEnabled(this, false)
+            wirelessEnabled = false
+            wirelessPermissionsReady = true
+            if (controller != null) {
+                restartCarPlay("USB attached")
+            } else {
                 requestStartupPrerequisites()
             }
         }
@@ -1050,6 +1054,7 @@ class CarPlayHostActivity : ComponentActivity() {
     }
 
     private fun isIphoneUsbAttachment(intent: Intent): Boolean {
+        if (intent.action == PreattachedIphone.ACTION) return true
         if (intent.action != UsbManager.ACTION_USB_DEVICE_ATTACHED) return false
         val device = androidx.core.content.IntentCompat.getParcelableExtra(intent, UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
         return device?.vendorId == IphoneUsbMatcher.APPLE_VENDOR_ID
@@ -5209,6 +5214,12 @@ class CarPlayHostActivity : ComponentActivity() {
         controllerGeneration: Int,
     ): (CarPlayStatus) -> Unit = report@{ status ->
         if (controllerGeneration != restartGeneration) return@report
+        if (status is CarPlayStatus.RunningControl || status is CarPlayStatus.RunningWireless) {
+            controlRunningCount++
+            lossSinceControlRunning = false
+        } else if (status is CarPlayStatus.Failed || status is CarPlayStatus.ControlEnded) {
+            lossSinceControlRunning = true
+        }
         if (status is CarPlayStatus.Failed || status is CarPlayStatus.ControlEnded) {
             callPopupSessionReady = false
             updateCallPopupGuard()
@@ -5798,6 +5809,8 @@ class CarPlayHostActivity : ComponentActivity() {
         englishReason: String = reason,
     ) {
         if (!CarPlayBackgroundSession.isOwner(this)) return
+        // Also when a retry is already pending and this loss is dropped: that retry must not skip.
+        lossSinceControlRunning = true
         if (menuOpen) recoveryPendingAfterMenu = true
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress || startupRetryStopped) return
         if (reconnectScheduled) return
@@ -5828,6 +5841,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         reconnectAttempts += 1
         appendLog("$reason; retrying in ${delayMillis}ms generation=$generation startupFailure=$startupFailure startupRetries=${startupRetryBudget.retries}")
+        val controlRunsAtFailure = controlRunningCount
         mainHandler.postDelayed(
             {
                 reconnectScheduled = false
@@ -5838,6 +5852,12 @@ class CarPlayHostActivity : ComponentActivity() {
                     handshakeResetInProgress || startupRetryStopped ||
                     generation != restartGeneration
                 ) {
+                    return@postDelayed
+                }
+                // A wired attempt can report a failure and still recover. Leave it alone only if it
+                // reached its control loop and has not been lost again since.
+                if (controlRunningCount != controlRunsAtFailure && !lossSinceControlRunning) {
+                    appendLog("Not reconnecting after $reason: the same attempt is running again")
                     return@postDelayed
                 }
                 restartCarPlay("Reconnecting after $reason")
@@ -6306,11 +6326,13 @@ class CarPlayHostActivity : ComponentActivity() {
             MotionEvent.ACTION_POINTER_DOWN,
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_POINTER_UP,
-            MotionEvent.ACTION_CANCEL -> Log.i(
-                TAG,
-                "touch action=${MotionEvent.actionToString(event.actionMasked)} " +
-                    "pointers=${event.pointerCount} queued=$queued",
-            )
+            MotionEvent.ACTION_CANCEL -> if (BuildConfig.DEBUG) {
+                Log.i(
+                    TAG,
+                    "touch action=${MotionEvent.actionToString(event.actionMasked)} " +
+                        "pointers=${event.pointerCount} queued=$queued",
+                )
+            }
         }
         return true
     }

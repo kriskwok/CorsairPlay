@@ -19,6 +19,7 @@
 #   LINCOLN_KEY_ALIAS         signing key alias
 #   LINCOLN_KEY_PASSWORD      signing key password
 #   DIPLAY_AUTH_ASSETS_DIR    runtime authentication assets directory
+#   CORSAIRPLAY_MIRROR_HOST   SSH host for the fallback download mirror (oracle-sg1)
 
 set -euo pipefail
 
@@ -35,6 +36,7 @@ FORK_REMOTE="${LINCOLN_FORK_REMOTE:-fork}"
 : "${LINCOLN_KEYSTORE_PASSWORD:=lincolnpay}"
 : "${LINCOLN_KEY_ALIAS:=lincolnpay}"
 : "${LINCOLN_KEY_PASSWORD:=$LINCOLN_KEYSTORE_PASSWORD}"
+: "${CORSAIRPLAY_MIRROR_HOST:=oracle-sg1}"
 
 BUMP=0
 DRY_RUN=0
@@ -205,6 +207,14 @@ gh release create "$TAG" \
   "$RELEASE_DIR/$APK_NAME" "$RELEASE_DIR/SHA256SUMS.txt" \
   --repo "$FORK_SLUG" --target "$TARGET_SHA" \
   --title "Lincoln $next_version" "${notes_args[@]}"
+
+step "Refreshing the fallback download mirror"
+if ssh -o BatchMode=yes "$CORSAIRPLAY_MIRROR_HOST" \
+    'sudo -n /usr/local/sbin/corsairplay-mirror-sync'; then
+  echo "Mirror updated on $CORSAIRPLAY_MIRROR_HOST"
+else
+  echo "warning: GitHub release succeeded, but the fallback mirror was not refreshed" >&2
+fi
 
 step "Done"
 cat <<EOF

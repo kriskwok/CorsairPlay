@@ -71,7 +71,7 @@ object LincolnClusterOutput {
      * An end must be reported this long before the cluster card is cleared. A route start or a
      * reroute sends a momentary NoRouteSet; acting on it at once blinked the card off and on.
      */
-    private const val END_SETTLE_NS = 2_500_000_000L
+    private const val END_SETTLE_NS = 1_000_000_000L
     @Volatile private var ticker: HandlerThread? = null
     @Volatile private var tickHandler: Handler? = null
     /**

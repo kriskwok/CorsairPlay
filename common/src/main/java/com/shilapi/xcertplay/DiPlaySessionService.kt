@@ -17,6 +17,7 @@ import com.shilapi.xcertplay.host.R
 class DiPlaySessionService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        HighDeBackgroundCleaner.start(this)
         if (intent?.action == ACTION_STOP) {
             CarPlayBackgroundSession.stop()
             stopSelf()

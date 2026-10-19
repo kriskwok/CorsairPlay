@@ -1,6 +1,7 @@
 package com.shilapi.xcertplay.media
 
 import android.util.Log
+import com.shilapi.xcertplay.shared.BuildConfig
 
 /** Five-second video counters that separate network/iPhone gaps from decoder throughput. */
 internal class VideoStats(
@@ -75,7 +76,7 @@ internal class VideoStats(
             touchAvgMs, maxTouchLatencyNs / 1_000_000, touchSamples, TouchLatencyProbe.maxSendNs / 1_000_000,
         ) + decodeSummary()
         TouchLatencyProbe.maxSendNs = 0
-        Log.i(TAG, line)
+        if (BuildConfig.DEBUG) Log.i(TAG, line)
         windowStartNs = now
         received = 0; rendered = 0; recoveries = 0; bytes = 0; maxArrivalGapNs = 0
         touchSamples = 0; touchLatencySumNs = 0; maxTouchLatencyNs = 0

@@ -9,13 +9,26 @@ internal data class UpdateRelease(
     val apkUrl: String,
     val checksumsUrl: String,
     val releaseNotes: String = "",
+    val prerelease: Boolean = false,
 )
 
 internal object UpdateCatalog {
     internal const val CHECKSUMS_FILE = "SHA256SUMS.txt"
 
-    /** Returns the first published release that carries an APK and its checksums, or null. */
-    internal fun parse(json: String): UpdateRelease? = parseAll(json).firstOrNull()
+    /** Returns the highest stable release that carries an APK and its checksums, or null. */
+    internal fun parse(json: String): UpdateRelease? =
+        bestStable(parseAll(json))
+
+    internal fun bestStable(releases: List<UpdateRelease>): UpdateRelease? =
+        releases
+            .filter { !it.prerelease && UpdateVersion.isStable(it.tagName) }
+            .maxWithOrNull(
+                compareBy<UpdateRelease>(
+                    { UpdateVersion.parse(it.tagName)?.first ?: -1 },
+                    { UpdateVersion.parse(it.tagName)?.second ?: -1 },
+                    { UpdateVersion.parse(it.tagName)?.third ?: -1 },
+                ),
+            )
 
     /** Returns every published release that can be downloaded and verified, newest first. */
     internal fun parseAll(json: String): List<UpdateRelease> {
@@ -45,6 +58,7 @@ internal object UpdateCatalog {
                 apkUrl = apkUrl,
                 checksumsUrl = checksumsUrl,
                 releaseNotes = release.optString("body"),
+                prerelease = release.optBoolean("prerelease"),
             )
         }
         return parsed

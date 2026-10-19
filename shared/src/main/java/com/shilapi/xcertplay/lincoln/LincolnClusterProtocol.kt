@@ -1,5 +1,7 @@
 package com.shilapi.xcertplay.lincoln
 
+import com.shilapi.xcertplay.hud.ClusterDistancePrecision
+
 /**
  * Lincoln/Ford instrument-cluster forwarding, reverse-engineered from the field build
  * `0.2.20-lincoln-preview19` (`com.lincolnpay.android81`).
@@ -68,13 +70,16 @@ object LincolnClusterProtocol {
         else -> "turn_front"
     }
 
-    /** The cluster rounds to 10 m / 100 m / 1 km; null when the value is out of the accepted range. */
-    fun roundDistance(meters: Int): Int? {
+    /** Five-metre low-range formatting by default; raw mode only validates the accepted range. */
+    fun roundDistance(
+        meters: Int,
+        precision: ClusterDistancePrecision = ClusterDistancePrecision.configured,
+    ): Int? {
         if (meters < 0 || meters > MAX_DISTANCE_METERS) return null
         return when {
-            meters < 1_000 -> (meters + 5) / 10 * 10
-            meters < 10_000 -> (meters + 50) / 100 * 100
-            else -> (meters + 500) / 1_000 * 1_000
+            meters < 1_000 -> precision.apply(meters, 5)
+            meters < 10_000 -> precision.apply(meters, 100)
+            else -> precision.apply(meters, 1_000)
         }
     }
 

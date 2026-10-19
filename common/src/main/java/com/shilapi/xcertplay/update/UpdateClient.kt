@@ -9,11 +9,12 @@ import java.net.URL
 import java.net.URLConnection
 
 internal object UpdateClient {
-    // This build is a Lincoln/Ford derivative and must never offer the upstream BYD package, so it
-    // checks its own fork's releases. That fork currently publishes no releases, which makes the
-    // update check a no-op until this project ships its own tagged APK.
-    internal const val RELEASES_URL =
+    internal const val GITHUB_RELEASES_URL =
         "https://api.github.com/repos/kriskwok/DiPlay/releases?per_page=30"
+    internal const val MIRROR_RELEASES_URL =
+        "https://node.czwyf.top:9443/corsairplay/releases.json"
+    internal const val MIRROR_ROOT_URL =
+        "https://node.czwyf.top:9443/corsairplay"
     private const val CONNECT_TIMEOUT_MILLIS = 10_000
     private const val READ_TIMEOUT_MILLIS = 30_000
     private const val MAXIMUM_TEXT_BYTES = 4 * 1024 * 1024
@@ -44,9 +45,64 @@ internal object UpdateClient {
         }
     }
 
-    internal fun download(url: String, destination: File, onProgress: (Long, Long?) -> Unit) {
+    internal fun download(
+        url: String,
+        destination: File,
+        onProgress: (Long, Long?) -> Unit,
+    ) {
+        download(listOf(url), destination, onProgress, { it.openConnection() })
+    }
+
+    internal fun download(
+        urls: List<String>,
+        destination: File,
+        onProgress: (Long, Long?) -> Unit,
+    ) {
+        download(urls, destination, onProgress, { it.openConnection() })
+    }
+
+    internal fun download(
+        urls: List<String>,
+        destination: File,
+        onProgress: (Long, Long?) -> Unit,
+        openConnection: (URL) -> URLConnection,
+    ) {
+        var firstFailure: Exception? = null
+        for (url in urls.distinct()) {
+            try {
+                downloadOne(url, destination, onProgress, openConnection)
+                return
+            } catch (failure: Exception) {
+                if (firstFailure == null) firstFailure = failure
+            }
+        }
+        throw firstFailure ?: IOException("No download source was configured")
+    }
+
+    internal fun apkUrls(release: UpdateRelease): List<String> =
+        listOf(release.apkUrl, mirrorAssetUrl(release.tagName, release.apkName))
+
+    internal fun checksumsUrls(release: UpdateRelease): List<String> =
+        listOf(
+            release.checksumsUrl,
+            mirrorAssetUrl(release.tagName, UpdateCatalog.CHECKSUMS_FILE),
+        )
+
+    private fun mirrorAssetUrl(tagName: String, fileName: String): String =
+        "$MIRROR_ROOT_URL/releases/${encodePath(tagName)}/${encodePath(fileName)}"
+
+    private fun encodePath(value: String): String =
+        java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+    private fun downloadOne(
+        url: String,
+        destination: File,
+        onProgress: (Long, Long?) -> Unit,
+        openConnection: (URL) -> URLConnection,
+    ) {
         destination.parentFile?.mkdirs()
-        val connection = URL(url).openConnection() as HttpURLConnection
+        val connection = openConnection(URL(url)) as? HttpURLConnection
+            ?: throw IOException("Download from $url did not open an HTTP connection")
         try {
             connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
             connection.readTimeout = READ_TIMEOUT_MILLIS

@@ -1,5 +1,6 @@
 package com.shilapi.xcertplay.airplay
 
+import com.shilapi.xcertplay.shared.BuildConfig
 import java.io.Closeable
 import java.io.IOException
 import java.net.DatagramPacket
@@ -153,14 +154,14 @@ class AudioStream(
                 }
                 val rtp = wire.copyOf(RTP_HEADER_LEN) + payload
                 val decryptedNumber = decryptedPackets.incrementAndGet()
-                if (decryptedNumber <= FIRST_PACKET_LOG_COUNT) {
+                if (BuildConfig.DEBUG && decryptedNumber <= FIRST_PACKET_LOG_COUNT) {
                     android.util.Log.i(
                         TAG,
                         "audio stream type=$streamType packet=$decryptedNumber sample=$sample " +
                             "wireBytes=${wire.size} payloadBytes=${payload.size} " +
                             "payloadHead=${payload.copyOf(minOf(payload.size, 16)).toHexString()}",
                     )
-                } else if (decryptedNumber % PACKET_LOG_INTERVAL == 0) {
+                } else if (BuildConfig.DEBUG && decryptedNumber % PACKET_LOG_INTERVAL == 0) {
                     android.util.Log.i(
                         TAG,
                         "audio stream type=$streamType decrypted=$decryptedNumber " +

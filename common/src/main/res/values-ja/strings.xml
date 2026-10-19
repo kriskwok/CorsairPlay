@@ -1011,4 +1011,9 @@
     <string name="settings_carplay_corner_radius_description">ヘッドユニットの単色背景に合わせてCarPlay映像の角を丸くします。オフでは四角のままです。</string>
     <string name="settings_carplay_corner_radius_off">オフ</string>
     <string name="settings_carplay_corner_radius">CarPlayの角の丸み</string>
+    <string name="update_prompt_title">新しいバージョンがあります</string>
+    <string name="update_prompt_message">現在のバージョン：%1$s\n新しいバージョン：%2$s\n\n%3$s</string>
+    <string name="update_prompt_now">今すぐ更新</string>
+    <string name="settings_clean_autonavi_background">AutoNaviのバックグラウンド整理</string>
+    <string name="settings_clean_autonavi_background_description">AutoNaviが前面から離れた後にキャッシュされたプロセスを終了します。ナビ実行中は影響しません。既定でオンです。</string>
 </resources>

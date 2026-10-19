@@ -908,4 +908,9 @@
     <string name="settings_carplay_corner_radius_description">Округлює кути зображення CarPlay над однотонним тлом головного пристрою. У положенні «Вимк.» кути залишаються прямими.</string>
     <string name="settings_carplay_corner_radius_off">Вимк.</string>
     <string name="settings_carplay_corner_radius">Радіус кутів CarPlay</string>
+    <string name="update_prompt_title">Доступна нова версія</string>
+    <string name="update_prompt_message">Поточна версія: %1$s\nНова версія: %2$s\n\n%3$s</string>
+    <string name="update_prompt_now">Оновити зараз</string>
+    <string name="settings_clean_autonavi_background">Очищення фону AutoNavi</string>
+    <string name="settings_clean_autonavi_background_description">Завершує кешовані процеси AutoNavi після виходу з переднього плану. Активна навігація не змінюється. Увімкнено за замовчуванням.</string>
 </resources>

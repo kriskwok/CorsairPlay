@@ -67,6 +67,14 @@ class UpdateAvailabilityTest {
         assertTrue(UpdateAvailability.shouldCheck(context, now - 1))
     }
 
+    @Test fun promptIsDismissedPerReleaseAndReturnsForANewerOne() {
+        val release = release("v0.2.27")
+        assertTrue(UpdateAvailability.shouldPrompt(context, release))
+        UpdateAvailability.markPrompted(context, release)
+        assertFalse(UpdateAvailability.shouldPrompt(context, release))
+        assertTrue(UpdateAvailability.shouldPrompt(context, release("v0.2.28")))
+    }
+
     private fun release(tag: String) = UpdateRelease(
         tagName = tag,
         apkName = "DiPlay-$tag.apk",

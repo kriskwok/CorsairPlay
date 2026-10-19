@@ -61,12 +61,22 @@ class FceManeuverCodesTest {
     }
 
     @Test
-    fun `distance is rounded as the driver reads it`() {
-        assertEquals(0, FceManeuverCodes.distance(-5))
-        assertEquals(180, FceManeuverCodes.distance(178))
-        assertEquals(990, FceManeuverCodes.distance(994))
-        assertEquals(1000, FceManeuverCodes.distance(996))
-        assertEquals(1500, FceManeuverCodes.distance(1530))
-        assertEquals(12500, FceManeuverCodes.distance(12_460))
+    fun `five metre precision keeps the low range fine`() {
+        assertEquals(0, FceManeuverCodes.distance(-5, ClusterDistancePrecision.FIVE_METER))
+        assertEquals(180, FceManeuverCodes.distance(178, ClusterDistancePrecision.FIVE_METER))
+        assertEquals(995, FceManeuverCodes.distance(994, ClusterDistancePrecision.FIVE_METER))
+        assertEquals(995, FceManeuverCodes.distance(996, ClusterDistancePrecision.FIVE_METER))
+        assertEquals(1500, FceManeuverCodes.distance(1530, ClusterDistancePrecision.FIVE_METER))
+        assertEquals(12500, FceManeuverCodes.distance(12_460, ClusterDistancePrecision.FIVE_METER))
+    }
+
+    @Test
+    fun `raw precision changes the value only for invalid signs`() {
+        assertEquals(0, FceManeuverCodes.distance(-5, ClusterDistancePrecision.RAW))
+        assertEquals(178, FceManeuverCodes.distance(178, ClusterDistancePrecision.RAW))
+        assertEquals(994, FceManeuverCodes.distance(994, ClusterDistancePrecision.RAW))
+        assertEquals(996, FceManeuverCodes.distance(996, ClusterDistancePrecision.RAW))
+        assertEquals(1530, FceManeuverCodes.distance(1530, ClusterDistancePrecision.RAW))
+        assertEquals(12_460, FceManeuverCodes.distance(12_460, ClusterDistancePrecision.RAW))
     }
 }

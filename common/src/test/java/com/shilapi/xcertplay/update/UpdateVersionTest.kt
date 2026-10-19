@@ -35,6 +35,15 @@ class UpdateVersionTest {
     }
 
     @Test
+    fun onlyPlainVersionTagsAreStable() {
+        assertTrue(UpdateVersion.isStable("0.2.27"))
+        assertTrue(UpdateVersion.isStable("v0.2.27"))
+        assertFalse(UpdateVersion.isStable("0.2.27-rc1"))
+        assertFalse(UpdateVersion.isStable("0.2.27-beta"))
+        assertFalse(UpdateVersion.isStable("CorsairPlay 0.2.27"))
+    }
+
+    @Test
     fun unparseableRemoteVersionIsNeverAnUpdate() {
         assertFalse(UpdateVersion.isNewer("public-preview", "0.2.14"))
     }

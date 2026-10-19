@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
 }
+def distancePrecision = providers.gradleProperty('corsairplayDistancePrecision').getOrElse('five-meter')
 android {
     namespace = 'com.shilapi.xcertplay.shared'
     compileSdk = 37
@@ -21,6 +22,7 @@ android {
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField 'String', 'DISTANCE_PRECISION', "\"${distancePrecision}\""
     }
     ndkVersion = '28.2.13676358'
     externalNativeBuild {
@@ -31,6 +33,7 @@ android {
     buildFeatures {
         // Geely/Lynk head-unit input API (com.geely.inputservice); declarations in src/main/aidl.
         aidl true
+        buildConfig true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

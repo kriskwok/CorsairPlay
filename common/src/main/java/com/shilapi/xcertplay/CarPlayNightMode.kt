@@ -71,6 +71,8 @@ internal class CarPlayNightModeController(
     private var schedule = CarPlayNightSchedule()
     private var resumed = false
     private var listening = false
+    private var ambientHasUsableReading = false
+    private var usingAmbientFallback = false
     private var pending: Boolean? = null
     private val transition = Runnable {
         val target = pending
@@ -79,10 +81,18 @@ internal class CarPlayNightModeController(
             applyNight(target)
         }
     }
+    private val ambientFallback = Runnable {
+        if (!resumed || mode != CarPlayNightMode.AMBIENT || ambientHasUsableReading) return@Runnable
+        usingAmbientFallback = true
+        applyAmbientFallback()
+    }
     private val scheduleTick = object : Runnable {
         override fun run() {
-            if (!resumed || mode != CarPlayNightMode.SCHEDULE) return
-            applySchedule()
+            when {
+                !resumed -> return
+                mode == CarPlayNightMode.SCHEDULE -> applySchedule()
+                mode == CarPlayNightMode.AMBIENT && usingAmbientFallback -> applyAmbientFallback()
+            }
         }
     }
 
@@ -115,9 +125,11 @@ internal class CarPlayNightModeController(
 
     fun systemChanged(night: Boolean) {
         systemNight = night
-        val ambientFallback = mode == CarPlayNightMode.AMBIENT &&
-            (!light.available || (resumed && !listening))
-        if (mode == CarPlayNightMode.SYSTEM || ambientFallback) applyNight(night)
+        when {
+            mode == CarPlayNightMode.SYSTEM -> applyNight(night)
+            mode == CarPlayNightMode.AMBIENT &&
+                (!light.available || (resumed && !listening)) -> beginAmbientFallback()
+        }
     }
 
     private fun applyMode() {
@@ -128,12 +140,15 @@ internal class CarPlayNightModeController(
             CarPlayNightMode.SCHEDULE -> applySchedule()
             CarPlayNightMode.AMBIENT -> {
                 if (!light.available) {
-                    applyNight(systemNight)
+                    beginAmbientFallback()
                 } else if (resumed && !listening) {
                     listening = light.start(::onLux)
                     if (!listening) {
                         light.stop()
-                        applyNight(systemNight)
+                        beginAmbientFallback()
+                    } else {
+                        scheduler.remove(ambientFallback)
+                        scheduler.postDelayed(ambientFallback, AMBIENT_FALLBACK_GRACE_MILLIS)
                     }
                 }
             }
@@ -142,8 +157,21 @@ internal class CarPlayNightModeController(
 
     private fun onLux(lux: Float) {
         if (!resumed || !listening || mode != CarPlayNightMode.AMBIENT) return
+        if (!lux.isFinite() || lux < 0f) {
+            cancelPending()
+            return
+        }
+        // Some Android 8 head units expose an on-change sensor that never emits a first sample.
+        // Ignore a zero-only stream until the sensor proves it can produce a real reading.
+        if (lux == 0f && !ambientHasUsableReading) {
+            cancelPending()
+            return
+        }
+        ambientHasUsableReading = true
+        usingAmbientFallback = false
+        scheduler.remove(ambientFallback)
+        scheduler.remove(scheduleTick)
         val target = when {
-            !lux.isFinite() || lux < 0f -> null
             !night && lux < threshold.lux.toFloat() -> true
             night && lux >= threshold.lux.toFloat() -> false
             else -> null
@@ -161,7 +189,10 @@ internal class CarPlayNightModeController(
     private fun stopListening() {
         if (listening) light.stop()
         listening = false
+        ambientHasUsableReading = false
+        usingAmbientFallback = false
         cancelPending()
+        scheduler.remove(ambientFallback)
         scheduler.remove(scheduleTick)
     }
 
@@ -169,6 +200,20 @@ internal class CarPlayNightModeController(
         val time = timeSource.snapshot()
         applyNight(schedule.isNight(time.minuteOfDay))
         if (!resumed || mode != CarPlayNightMode.SCHEDULE) return
+        scheduler.remove(scheduleTick)
+        scheduler.postDelayed(scheduleTick, time.millisUntilNextMinute.coerceIn(1, 60_000))
+    }
+
+    private fun beginAmbientFallback() {
+        scheduler.remove(ambientFallback)
+        usingAmbientFallback = true
+        applyAmbientFallback()
+    }
+
+    private fun applyAmbientFallback() {
+        val time = timeSource.snapshot()
+        applyNight(schedule.isNight(time.minuteOfDay))
+        if (!resumed || mode != CarPlayNightMode.AMBIENT || ambientHasUsableReading) return
         scheduler.remove(scheduleTick)
         scheduler.postDelayed(scheduleTick, time.millisUntilNextMinute.coerceIn(1, 60_000))
     }
@@ -182,5 +227,9 @@ internal class CarPlayNightModeController(
         if (value == night) return
         night = value
         onNightChanged(value)
+    }
+
+    private companion object {
+        const val AMBIENT_FALLBACK_GRACE_MILLIS = 1_500L
     }
 }

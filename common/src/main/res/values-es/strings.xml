@@ -896,4 +896,9 @@
     <string name="settings_carplay_corner_radius_description">Redondea las esquinas de la imagen de CarPlay sobre el fondo de color uniforme de la unidad. Desactivado mantiene las esquinas rectas.</string>
     <string name="settings_carplay_corner_radius_off">Desactivado</string>
     <string name="settings_carplay_corner_radius">Radio de las esquinas de CarPlay</string>
+    <string name="update_prompt_title">Nueva versión disponible</string>
+    <string name="update_prompt_message">Versión actual: %1$s\nNueva versión: %2$s\n\n%3$s</string>
+    <string name="update_prompt_now">Actualizar ahora</string>
+    <string name="settings_clean_autonavi_background">Limpiar AutoNavi en segundo plano</string>
+    <string name="settings_clean_autonavi_background_description">Finaliza los procesos en caché de AutoNavi cuando deja el primer plano. La navegación activa no se ve afectada. Activado de forma predeterminada.</string>
 </resources>

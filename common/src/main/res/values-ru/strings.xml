@@ -896,4 +896,9 @@
     <string name="settings_carplay_corner_radius_description">Скругляет углы изображения CarPlay поверх однотонного фона головного устройства. В положении «Выкл.» углы остаются прямыми.</string>
     <string name="settings_carplay_corner_radius_off">Выкл.</string>
     <string name="settings_carplay_corner_radius">Радиус углов CarPlay</string>
+    <string name="update_prompt_title">Доступна новая версия</string>
+    <string name="update_prompt_message">Текущая версия: %1$s\nНовая версия: %2$s\n\n%3$s</string>
+    <string name="update_prompt_now">Обновить сейчас</string>
+    <string name="settings_clean_autonavi_background">Очистка фона AutoNavi</string>
+    <string name="settings_clean_autonavi_background_description">Завершает кэшированные процессы AutoNavi после выхода из переднего плана. Активная навигация не затрагивается. Включено по умолчанию.</string>
 </resources>

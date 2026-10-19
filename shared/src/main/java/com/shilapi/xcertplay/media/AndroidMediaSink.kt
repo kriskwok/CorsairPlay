@@ -25,6 +25,7 @@ import com.shilapi.xcertplay.airplay.VideoCodec
 import com.shilapi.xcertplay.airplay.toHexString
 import com.shilapi.xcertplay.compat.AudioFocusRequestCompat
 import com.shilapi.xcertplay.hud.BydBluetoothSuspend
+import com.shilapi.xcertplay.shared.BuildConfig
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
@@ -2106,6 +2107,11 @@ private class AudioRenderer(
     private val navigationPlaybackToken = NavigationPlayback.open()
     private var actualLegacyStreamType: Int? = null
     private val queue = LinkedBlockingQueue<AudioPacket>(MAX_QUEUED_PACKETS)
+    /** Music with sustained decoder backpressure must not keep playing stale packets. */
+    private val mediaLagGuard =
+        if (format.audioType == "media") MediaPacketLagGuard(format.rtpClockRate) else null
+    @Volatile private var newestRtpSample = 0
+    private var lagRecoveryReports = 0
     @Volatile private var running = true
     /** The car's audio-off key; telephony keeps playing so a call is never cut. */
     @Volatile private var audioOffMuted = false
@@ -2190,6 +2196,20 @@ private class AudioRenderer(
             val now = System.nanoTime()
             val previous = lastArrivalNs.getAndSet(now)
             if (previous != 0L) maxArrivalGapMs.accumulateAndGet((now - previous) / 1_000_000L, ::maxOf)
+            newestRtpSample = sample
+            // Preserve short Wi-Fi bursts. If compressed audio remains >1.5s behind for another
+            // 1.5s, discard only stale undecoded packets so playback catches up to the live song.
+            val removed = mediaLagGuard?.recover(queue, sample, AudioPacket::sample, now) ?: 0
+            if (removed > 0) {
+                packetsDropped.addAndGet(removed)
+                if (lagRecoveryReports < MAX_REBUFFER_REPORTS) {
+                    lagRecoveryReports++
+                    report(
+                        "Audio: stale media packet backlog recovered " +
+                            "audioType=${format.audioType} packetsDiscarded=$removed remaining=${queue.size}",
+                    )
+                }
+            }
         }
         if (!started || !queue.offer(AudioPacket(rtp, sample))) {
             if (started) packetsDropped.incrementAndGet()
@@ -3028,7 +3048,7 @@ private class AudioRenderer(
             "partialWrites=$partialWritesThisWindow musicWrite=$musicWriteMode " +
             "decoderDroppedTotal=$inputDropped outputBuffersTotal=$outputBuffers rebuffers=$rebufferCount " +
             "playbackRate=${clockTrim?.rate ?: -1} ended=$force"
-        Log.i(STATS_TAG, line)
+        if (BuildConfig.DEBUG) Log.i(STATS_TAG, line)
         report(line)
         if (format.codec != AudioCodecKind.LPCM) {
             // Keep this separate: the exported diagnostic recorder caps each line at 700 characters.
@@ -3036,7 +3056,7 @@ private class AudioRenderer(
                 "inputQueuedTotal=$inputQueued inputDroppedTotal=$inputDropped " +
                 "shortOpusPacketsTotal=$shortOpusPackets decoderUnavailablePacketsTotal=$decoderUnavailablePackets " +
                 "outputBuffersTotal=$outputBuffers ended=$force"
-            Log.i(STATS_TAG, decoderLine)
+            if (BuildConfig.DEBUG) Log.i(STATS_TAG, decoderLine)
             runCatching { report(decoderLine) }
         }
         statsLastUnderruns = underruns

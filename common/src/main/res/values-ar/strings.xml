@@ -945,4 +945,9 @@
     <string name="settings_carplay_corner_radius_description">يدوّر زوايا صورة CarPlay فوق خلفية شاشة السيارة ذات اللون الموحد. عند الإيقاف تبقى الزوايا حادة.</string>
     <string name="settings_carplay_corner_radius_off">إيقاف</string>
     <string name="settings_carplay_corner_radius">نصف قطر زوايا CarPlay</string>
+    <string name="update_prompt_title">إصدار جديد متاح</string>
+    <string name="update_prompt_message">الإصدار الحالي: %1$s\nالإصدار الجديد: %2$s\n\n%3$s</string>
+    <string name="update_prompt_now">التحديث الآن</string>
+    <string name="settings_clean_autonavi_background">تنظيف خلفية AutoNavi</string>
+    <string name="settings_clean_autonavi_background_description">ينهي عمليات AutoNavi المخزنة بعد مغادرتها الواجهة. لا يؤثر في الملاحة النشطة. مفعّل افتراضيًا.</string>
 </resources>

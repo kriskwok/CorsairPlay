@@ -1014,4 +1014,9 @@
     <string name="settings_carplay_corner_radius">CarPlay corner radius</string>
     <string name="settings_home_card_media">Show song and lyrics on the home card</string>
     <string name="settings_home_card_media_description">When CarPlay is playing, the home-screen CarPlay card shows the song name with the current lyric underneath. Pausing or stopping restores the plain CarPlay title. Default off.</string>
+    <string name="update_prompt_title">New version available</string>
+    <string name="update_prompt_message">Current version: %1$s\nNew version: %2$s\n\n%3$s</string>
+    <string name="update_prompt_now">Update now</string>
+    <string name="settings_clean_autonavi_background">Clean up AutoNavi background</string>
+    <string name="settings_clean_autonavi_background_description">Ends AutoNavi cached processes after it leaves the foreground. Active navigation is not affected. Default on.</string>
 </resources>
