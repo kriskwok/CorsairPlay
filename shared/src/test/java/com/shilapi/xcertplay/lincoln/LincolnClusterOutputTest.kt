@@ -69,6 +69,22 @@ class LincolnClusterOutputTest {
         assertTrue("The card must keep being refreshed", infos().size > info)
     }
 
+    @Test fun diagnosticsShowWhatWasReceivedAndSent() {
+        send(guidance())
+
+        val line = LincolnClusterOutput.diagnosticLine(guidance())
+
+        assertTrue(line.contains("connected=true"))
+        assertTrue(line.contains("route=true"))
+        assertTrue(line.contains("maneuver=11"))
+        assertTrue(line.contains("turn=turn_front"))
+        assertTrue(line.contains("distance=300->300"))
+        assertTrue(line.contains("nav=true"))
+        assertTrue(line.contains("navStateOn=true"))
+        assertTrue(line.contains("navSent=1"))
+        assertTrue(line.contains("reason=guidance"))
+    }
+
     private fun send(snapshot: CarPlayGlance.Snapshot) {
         LincolnClusterOutput.javaClass.getDeclaredMethod("onSnapshot", CarPlayGlance.Snapshot::class.java)
             .apply { isAccessible = true }

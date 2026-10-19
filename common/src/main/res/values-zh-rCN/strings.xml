@@ -962,6 +962,8 @@
     <string name="settings_lincoln_cluster_remaining">仪表剩余里程/时间（实验性）</string>
     <string name="settings_lincoln_cluster_remaining_description">额外发送总剩余里程和时间。已验证的仪表会忽略未知字段，因此只有在探测确认你的仪表接受的字段名后才有意义。</string>
     <string name="settings_lincoln_cluster_status">仪表应用：%1$s\n%2$s</string>
+    <string name="settings_lincoln_cluster_diagnostics">仪表诊断（测试版）</string>
+    <string name="settings_lincoln_cluster_refresh_diagnostics">刷新仪表诊断</string>
     <string name="settings_lincoln_fast_video">林肯/福特流畅模式（实验性）</string>
     <string name="settings_lincoln_fast_video_description">尝试缩短画面输出等待，保留分辨率和音频设置。适配车机默认开启，可关闭对比；下次连接生效。</string>
     <string name="settings_carplay_corner_radius_value">%1$d dp</string>

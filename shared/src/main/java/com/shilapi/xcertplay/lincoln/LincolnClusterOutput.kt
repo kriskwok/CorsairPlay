@@ -142,6 +142,39 @@ object LincolnClusterOutput {
             " navOwned=$navOwned musicOwned=$musicOwned remainOwned=$remainOwned"
     }
 
+    /** Detailed snapshot for the HUD test build; it does not change forwarding state. */
+    fun diagnosticLine(snapshot: CarPlayGlance.Snapshot = CarPlayGlance.snapshot()): String =
+        synchronized(lock) {
+            val app = context
+            val turn = LincolnClusterProtocol.turnCode(snapshot.maneuverType, snapshot.drivingSide)
+            val distance = LincolnClusterProtocol.roundDistance(snapshot.distanceMeters)
+            val navEnabled = app?.let(LincolnClusterSettings::navigation) ?: false
+            val musicEnabled = app?.let(LincolnClusterSettings::music) ?: false
+            val lastNav = if (lastNavSentNs == 0L) {
+                "never"
+            } else {
+                "${((nanoTime() - lastNavSentNs) / 1_000_000_000L).coerceAtLeast(0)}s ago"
+            }
+            buildString {
+                append("connected=").append(snapshot.connected)
+                append(" route=").append(snapshot.routeActive)
+                append(" ended=").append(snapshot.routeEnded)
+                append("\nmaneuver=").append(snapshot.maneuverType ?: "none")
+                append(" turn=").append(turn ?: "none")
+                append(" distance=").append(snapshot.distanceMeters)
+                append("->").append(distance ?: "none")
+                append("\nroad='").append(snapshot.road.take(48)).append('\'')
+                append("\nnav=").append(navEnabled)
+                append(" music=").append(musicEnabled)
+                append(" navStateOn=").append(navStateOn ?: "unset")
+                append("\nnavSent=").append(navSent)
+                append(" musicSent=").append(musicSent)
+                append(" remainSent=").append(remainSent)
+                append(" lastNav=").append(lastNav)
+                append("\nreason=").append(lastReason)
+            }
+        }
+
     private fun startTicking() {
         if (tickHandler != null) return
         val thread = HandlerThread("diplay-lincoln-cluster").apply { start() }

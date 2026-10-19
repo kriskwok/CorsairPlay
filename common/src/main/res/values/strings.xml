@@ -1005,6 +1005,8 @@
     <string name="settings_lincoln_cluster_remaining">Cluster remaining distance/time (experimental)</string>
     <string name="settings_lincoln_cluster_remaining_description">Also send the total remaining distance and time. The tested cluster ignores unknown fields, so this is only useful once a probe confirms the field names your cluster accepts.</string>
     <string name="settings_lincoln_cluster_status">Cluster app: %1$s\n%2$s</string>
+    <string name="settings_lincoln_cluster_diagnostics">HUD diagnostics (test build)</string>
+    <string name="settings_lincoln_cluster_refresh_diagnostics">Refresh HUD diagnostics</string>
     <string name="settings_lincoln_fast_video">Lincoln/Ford smooth mode (experimental)</string>
     <string name="settings_lincoln_fast_video_description">Shortens the wait before each frame is shown while keeping the resolution and audio settings. On by default on supported head units; turn it off to compare. Applies at the next connection.</string>
     <string name="settings_carplay_corner_radius_value">%1$d dp</string>

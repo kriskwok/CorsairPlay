@@ -4573,6 +4573,22 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         card.addView(label(brandString(R.string.settings_lincoln_cluster_status,
             com.shilapi.xcertplay.lincoln.LincolnClusterSettings.clusterPackage(this),
             com.shilapi.xcertplay.lincoln.LincolnClusterOutput.statusLine()), 14, MUTED))
+        card.addView(label(brandString(R.string.settings_lincoln_cluster_diagnostics), 14, MUTED)
+            .apply { setPadding(0, dp(10), 0, 0) })
+        val diagnostics = label(
+            com.shilapi.xcertplay.lincoln.LincolnClusterOutput.diagnosticLine(),
+            13,
+            MUTED,
+        ).apply {
+            setTextIsSelectable(true)
+        }
+        card.addView(diagnostics)
+        card.addView(button(
+            brandString(R.string.settings_lincoln_cluster_refresh_diagnostics),
+            false,
+        ) {
+            diagnostics.text = com.shilapi.xcertplay.lincoln.LincolnClusterOutput.diagnosticLine()
+        })
     }
 
     /** The 0.2.9 Dashboard song setting, shown once: in the BYD navigation card, or under Advanced vehicle data. */
