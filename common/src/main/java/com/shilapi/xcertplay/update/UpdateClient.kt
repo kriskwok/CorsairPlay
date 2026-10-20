@@ -10,7 +10,7 @@ import java.net.URLConnection
 
 internal object UpdateClient {
     internal const val GITHUB_RELEASES_URL =
-        "https://api.github.com/repos/kriskwok/DiPlay/releases?per_page=30"
+        "https://api.github.com/repos/kriskwok/CorsairPlay/releases?per_page=30"
     internal const val MIRROR_RELEASES_URL =
         "https://node.czwyf.top:9443/corsairplay/releases.json"
     internal const val MIRROR_ROOT_URL =

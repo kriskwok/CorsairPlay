@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 
 
-REPOSITORY = os.environ.get("CORSAIRPLAY_GITHUB_REPO", "kriskwok/DiPlay")
+REPOSITORY = os.environ.get("CORSAIRPLAY_GITHUB_REPO", "kriskwok/CorsairPlay")
 API_URL = f"https://api.github.com/repos/{REPOSITORY}/releases?per_page=100"
 PUBLIC_ROOT = os.environ.get(
     "CORSAIRPLAY_MIRROR_PUBLIC_ROOT",
