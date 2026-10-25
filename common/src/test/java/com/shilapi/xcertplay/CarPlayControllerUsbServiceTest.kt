@@ -122,7 +122,9 @@ class CarPlayControllerUsbServiceTest {
         val controller = waitingForReenumeration(context, logs)
 
         ReflectionHelpers.callInstanceMethod<Unit>(controller, "watchReenumeration",
-            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone))
+            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!, false),
+            ReflectionHelpers.ClassParameter.from(Long::class.javaPrimitiveType!!, 0L))
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(CarPlayController.REENUMERATION_WAIT_MILLIS - 100))
         assertTrue(logs.none { it.contains("USB transition unanswered") || it.contains("permission already granted") })
 
@@ -142,7 +144,9 @@ class CarPlayControllerUsbServiceTest {
         val controller = waitingForReenumeration(context, logs)
 
         ReflectionHelpers.callInstanceMethod<Unit>(controller, "watchReenumeration",
-            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone))
+            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!, false),
+            ReflectionHelpers.ClassParameter.from(Long::class.javaPrimitiveType!!, 0L))
         ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicInteger>(
             controller,
             "availabilityPollGeneration",
@@ -152,9 +156,37 @@ class CarPlayControllerUsbServiceTest {
 
         shadowOf(usb).removeUsbDevice(iphone)
         ReflectionHelpers.callInstanceMethod<Unit>(controller, "watchReenumeration",
-            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone))
+            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!, false),
+            ReflectionHelpers.ClassParameter.from(Long::class.javaPrimitiveType!!, 0L))
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(11))
         assertTrue(logs.none { it.contains("USB transition unanswered") })
+    }
+
+    @Test fun aSessionDiPlayClosedWaitsForTheIphonesResetInsteadOfOpeningTheStaleNode() {
+        // #335: the iPhone stays in CarPlay mode on the node DiPlay closed itself and takes no
+        // new session until it resets USB. Opening that node re-arms the mode and holds the reset
+        // off, which is why reconnecting used to need the cable pulled.
+        val context = UsbContext(true)
+        val usb = context.getSystemService(UsbManager::class.java)
+        val iphone = usbDevice(0x05ac, 0x12a8, "/dev/bus/usb/001/004")
+        shadowOf(usb).addOrUpdateUsbDevice(iphone, true)
+        val logs = mutableListOf<String>()
+        val controller = waitingForReenumeration(context, logs)
+
+        ReflectionHelpers.callInstanceMethod<Unit>(controller, "watchReenumeration",
+            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, iphone),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!, true),
+            ReflectionHelpers.ClassParameter.from(Long::class.javaPrimitiveType!!, 0L))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_100))
+        assertTrue(logs.any { it.contains("USB reset for DiPlay's previous session not seen after 5000ms") })
+        assertTrue(logs.none { it == "wired iPhone USB permission already granted" })
+
+        // The reset eventually brings the iPhone back on a new node, and that one is used.
+        shadowOf(usb).removeUsbDevice(iphone)
+        shadowOf(usb).addOrUpdateUsbDevice(usbDevice(0x05ac, 0x12a8, "/dev/bus/usb/001/006"), true)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_100))
+        assertTrue(logs.any { it == "wired iPhone USB permission already granted" })
     }
 
     private fun waitingForReenumeration(context: Context, logs: MutableList<String>): CarPlayController {
