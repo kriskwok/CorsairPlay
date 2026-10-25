@@ -152,6 +152,14 @@ class IphoneUsbHost(
         }
 
     /**
+     * Drops the iPhone off the USB bus and lets it come back, the way pulling the cable does.
+     *
+     * Call this only once DiPlay has closed everything it holds on the device: the reset reuses the
+     * descriptor an open connection owns. Any thread; it opens and closes its own connection.
+     */
+    fun resetDevice(device: UsbDevice): UsbBusReset.Outcome = UsbBusReset.reset(usbManager, device)
+
+    /**
      * Sends the LIVI-evidenced vendor request then closes the connection before re-enumeration.
      * The callback is invoked from [executor].
      */
@@ -268,8 +276,7 @@ class IphoneUsbHost(
                 ?: throw IphoneUsbException.Protocol("CarPlay configuration exposes no USBMUX interface")
             val endpoints = IphoneCarPlayConfiguration.usbMuxEndpoints(usbMux)
                 ?: throw IphoneUsbException.Protocol("USBMUX interface exposes no bulk endpoint pair")
-            Log.i(
-                IphoneCarPlayConfiguration.TAG,
+            UsbTrace.log(
                 "usbmux config=${configuration.id} iface=${usbMux.id} alt=${usbMux.alternateSetting} " +
                     "class=${usbMux.interfaceClass}/${usbMux.interfaceSubclass}/${usbMux.interfaceProtocol} " +
                     "endpoints=${usbMux.endpointCount} " +

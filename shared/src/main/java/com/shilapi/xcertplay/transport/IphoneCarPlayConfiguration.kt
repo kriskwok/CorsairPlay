@@ -31,8 +31,7 @@ object IphoneCarPlayConfiguration {
         val configurations = (0 until device.configurationCount).map(device::getConfiguration)
         val chosen = configurations.firstOrNull { usbMuxInterface(it) != null && hasCdcNcm(it) && hasAppleEthernet(it) }
             ?: configurations.firstOrNull { usbMuxInterface(it) != null && hasCdcNcm(it) }
-        Log.i(
-            TAG,
+        UsbTrace.log(
             "carplay config chosen=${chosen?.id} " +
                 "available=${configurations.map { it.id }} detail=${chosen?.let(::describe)}",
         )

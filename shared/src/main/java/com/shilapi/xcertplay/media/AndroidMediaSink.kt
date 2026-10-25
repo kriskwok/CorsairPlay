@@ -26,6 +26,7 @@ import com.shilapi.xcertplay.airplay.toHexString
 import com.shilapi.xcertplay.compat.AudioFocusRequestCompat
 import com.shilapi.xcertplay.hud.BydBluetoothSuspend
 import com.shilapi.xcertplay.shared.BuildConfig
+import com.shilapi.xcertplay.transport.UsbTrace
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
@@ -919,7 +920,7 @@ class AndroidMediaSink(
             earpieceFallbackTried = false
             val speakerRequested = runCatching(callSpeakerphone).getOrDefault(false)
             if (speakerRequested) callSpeaker = CallSpeaker.on(manager)
-            Log.i("xcertplay-usb", "audio mode $savedAudioMode -> ${manager.mode} for telephony stream=$id")
+            UsbTrace.log("audio mode $savedAudioMode -> ${manager.mode} for telephony stream=$id")
             // The report, not just logcat: a head unit left in the voice path plays no media,
             // and that cannot be diagnosed from a car without adb. A failing report must not
             // disturb the mode, so it is the last thing done and it cannot throw out of here.
@@ -960,7 +961,7 @@ class AndroidMediaSink(
             // would let a failing callback be caught as a failed restore.
             val line = try {
                 manager.mode = savedAudioMode
-                Log.i("xcertplay-usb", "audio mode restored to ${manager.mode}")
+                UsbTrace.log("audio mode restored to ${manager.mode}")
                 "Audio: mode restored requested=$savedAudioMode now=${manager.mode} stream=$active"
             } catch (error: RuntimeException) {
                 Log.w("xcertplay-usb", "could not restore audio mode $savedAudioMode", error)
@@ -1011,7 +1012,12 @@ class AndroidMediaSink(
     private fun videoDecoder(type: Int): VideoDecoder = synchronized(videoOwnershipLock) {
         videoDecoders[type] ?: run {
             // A decoder that replaces a closed one picks up the stream's codec configuration.
-            val decoder = newVideoDecoder(type, surfaces[type] ?: defaultSurface, startImmediately = false)
+            // Only the main stream inherits the surface the sink was built with. A secondary
+            // stream with no surface is one the host has deliberately put away — the CarPlay-full
+            // desktop clears 111 so only 110 is on screen — and falling back to the main surface
+            // would paint the dashboard picture over the one the driver asked for.
+            val fallback = if (type == MAIN_SCREEN_TYPE) defaultSurface else null
+            val decoder = newVideoDecoder(type, surfaces[type] ?: fallback, startImmediately = false)
             videoDecoders[type] = decoder
             lastVideoConfig[type]?.let { (codec, data) -> decoder.configure(codec, data) }
             decoder.start()

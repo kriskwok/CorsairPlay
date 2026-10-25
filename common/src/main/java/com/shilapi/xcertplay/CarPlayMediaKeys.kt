@@ -170,7 +170,13 @@ internal object CarPlayMediaKeys {
                 if (nowPlaying.elapsedMillis != update.elapsedMillis) elapsedUpdatedAt = SystemClock.elapsedRealtime()
                 val metadataChanged = metadataChanged(nowPlaying, update) || artwork !== previousArtwork
                 nowPlaying = update
-                if (metadataChanged) ClusterMusicState.publish(update, update.artworkTransferId?.let { artworkCache[it] })
+                // The retained cover, not a fresh look-up in the cache. [nextArtwork] keeps the
+                // current bitmap while a newly named transfer is still decoding, and re-reading the
+                // cache here threw that away: the id is dropped from the cache the moment a track
+                // change reuses the same reference, so the cover was published as nothing while the
+                // bitmap was still in hand — it appeared for the first second of a track and then
+                // went, with nothing to bring it back until the iPhone sent the art again.
+                if (metadataChanged) ClusterMusicState.publish(update, artwork)
                 updateInitialAlbumRecovery(expected)
                 // The iPhone repeats NowPlayingUpdate about twice a second for the position alone.
                 // Republishing the metadata each time sent a copy of the artwork through system_server
@@ -616,6 +622,10 @@ internal object CarPlayMediaKeys {
     /** Next track from the launcher's CarPlay card. */
     internal fun onHomeCardNext(): Boolean =
         send(com.shilapi.xcertplay.airplay.CarPlayMediaButton.NEXT, "home-card-next")
+
+    /** Previous track from the launcher's CarPlay card. */
+    internal fun onHomeCardPrevious(): Boolean =
+        send(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PREVIOUS, "home-card-previous")
 
     /**
      * A media key routed to the deprecated receiver used by older head units. This outranks the

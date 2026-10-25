@@ -96,6 +96,7 @@ import com.shilapi.xcertplay.transport.LockdownPairingClient
 import com.shilapi.xcertplay.transport.LockdownPairRecord
 import com.shilapi.xcertplay.transport.NcmFunctionDiscovery
 import com.shilapi.xcertplay.transport.NcmUsbBridge
+import com.shilapi.xcertplay.transport.UsbBusReset
 import java.io.Closeable
 import java.io.IOException
 import java.net.InetAddress
@@ -217,6 +218,7 @@ class CarPlayController(
     private var permissionPollGeneration = 0
     private var reenumerationAttempts = 0
     @Volatile private var wiredDeviceName: String? = null
+    @Volatile private var wiredDevice: UsbDevice? = null
     private val usbAdbGrantAttempts = mutableSetOf<String>()
     private val pendingUsbAdbGrants = mutableSetOf<String>()
     private var lastReportedStatus: CarPlayStatus? = null
@@ -275,6 +277,7 @@ class CarPlayController(
     @Volatile private var instantBluetoothLink: InstantBluetoothLink? = null
     @Volatile private var firstTcpWatchdog: FirstTcpWatchdog? = null
     @Volatile private var wiredStartWatchdog: WiredStartWatchdog? = null
+    @Volatile private var wiredUsbSession: Iap2UsbSession? = null
     @Volatile private var wirelessPublishedAddress: InetAddress? = null
     @Volatile private var wirelessAlternateAddress: InetAddress? = null
     @Volatile private var wirelessAddressRecovery: HotspotAddressRecovery? = null
@@ -638,11 +641,22 @@ class CarPlayController(
         }
         firstTcpWatchdog?.terminate()
         wiredStartWatchdog?.terminate()
+        var resetDeviceAfterClose: UsbDevice? = null
+        if (config.transport == CarPlayTransport.WIRED && phase == Phase.CONTROL) {
+            // A live wired session that DiPlay closes leaves the iPhone in CarPlay mode on this
+            // node. Record it so the next attempt waits for the iPhone's USB reset instead of
+            // opening the mode that cannot take a session (#335).
+            wiredDeviceName?.let { WiredSessionMemory.hostClosed(appContext, it) }
+            // The wait is only a fallback: the reset below takes the iPhone off the bus and back,
+            // so the new node (and with it a session that connects) is there in seconds rather
+            // than after the iPhone's own minute-or-longer timeout.
+            resetDeviceAfterClose = wiredDevice
+        }
         BydBluetoothSuspend.resume(appContext, this) { debugLog(it) }
         startupTimer.shutdownNow()
         (hotspot as? ManualHotspotManager)?.close()
         val teardownStarted = System.nanoTime()
-        connectionDiagnostic("teardown begin transport=${config.transport}")
+        connectionEvent("teardown begin transport=${config.transport}")
         videoGate?.close()
         BydNavigationOutputs.endNow()
         com.shilapi.xcertplay.glance.CarPlayGlance.setConnected(false)
@@ -667,11 +681,25 @@ class CarPlayController(
                     }
                     closeBestEffort("USBMUX") { mux?.close() }
                     mux = null
+                    closeBestEffort("USBMUX session") { wiredUsbSession?.close() }
+                    wiredUsbSession = null
                     if (config.transport == CarPlayTransport.WIRED) {
                         closeBestEffort("VPN/NCM") { service?.detach() }
                     }
                     closeBestEffort("MFi") { mfiSession?.close() }
                     mfiSession = null
+                    // The bus reset is the last thing to touch the device: the driver refuses it
+                    // while any descriptor of ours still holds the iPhone open, so NCM and MFi
+                    // are closed first. Done that way it takes the iPhone off the bus and back,
+                    // and the fresh node it announces is what the next controller finds instead of
+                    // the mode this session left behind (#335).
+                    resetDeviceAfterClose?.let { device ->
+                        val reset = runCatching { iphoneHost.resetDevice(device) }
+                            .getOrElse { UsbBusReset.Outcome(false, it.toString()) }
+                        connectionEvent(
+                            "USB bus reset after DiPlay's own session ok=${reset.ok} ${reset.detail}",
+                        )
+                    }
                     wirelessRuntimeIdentification = null
                     wirelessAirPlayEndpoint = null
                     closeBestEffort("location provider") { locationProvider?.close() }
@@ -683,7 +711,7 @@ class CarPlayController(
                     } catch (_: InterruptedException) {
                         Thread.currentThread().interrupt()
                     }
-                    connectionDiagnostic(
+                    connectionEvent(
                         "teardown end elapsedMs=${elapsedMillis(teardownStarted)} " +
                             "executorTerminated=$executorTerminated",
                     )
@@ -1947,7 +1975,14 @@ class CarPlayController(
                     Phase.REENUMERATION, Phase.IPHONE -> {
                         val configuration = IphoneCarPlayConfiguration.find(result.device)
                         val carPlayMode = configuration?.let(IphoneCarPlayConfiguration::isCarPlayMode) == true
-                        val sessionAlreadyStarted = WiredSessionMemory.startedOn(result.device.deviceName)
+                        val sessionAlreadyStarted = WiredSessionMemory.startedOn(
+                            appContext,
+                            result.device.deviceName,
+                        )
+                        // DiPlay closed that session itself, so the iPhone is still in CarPlay mode
+                        // on this node and will take no new one until it resets USB (#335).
+                        val closedByDiPlay = sessionAlreadyStarted &&
+                            WiredSessionMemory.closedByDiPlayOn(appContext, result.device.deviceName)
                         val action = WiredConfigurationAction.choose(
                             found = configuration != null,
                             carPlayMode = carPlayMode,
@@ -1960,6 +1995,7 @@ class CarPlayController(
                                 "configurationId=${configuration?.id ?: "none"} " +
                                 "reenumerationAttempts=$reenumerationAttempts " +
                                 (if (sessionAlreadyStarted && carPlayMode) "previousSessionOnThisEnumeration=true " else "") +
+                                (if (closedByDiPlay) "closedByDiPlay=true " else "") +
                                 "action=${action.diagnostic}",
                         )
                         when (action) {
@@ -1967,8 +2003,14 @@ class CarPlayController(
                             WiredConfigurationAction.USE_WITHOUT_APPLE_ETHERNET -> openDataPaths(result.device)
                             WiredConfigurationAction.REQUEST_TRANSITION -> beginReenumeration(
                                 result.device,
+                                // The mode DiPlay itself ended is not used as a fallback: opening
+                                // it takes StartSession there, which re-arms the iPhone's CarPlay
+                                // mode and holds off the USB reset it needs. Waiting for that
+                                // reset is what lets a reconnect finish without the cable pulled.
                                 WiredConfigurationAction.fallbackAfterRejection(
-                                    configuration != null, carPlayMode, sessionAlreadyStarted),
+                                    configuration != null, carPlayMode, sessionAlreadyStarted) &&
+                                    !closedByDiPlay,
+                                waitForFreshEnumeration = closedByDiPlay,
                             )
                             WiredConfigurationAction.REJECT -> fail(
                                 IphoneUsbException.Protocol(
@@ -2021,28 +2063,54 @@ class CarPlayController(
         mainHandler.postDelayed(check, PERMISSION_POLL_INTERVAL_MILLIS)
     }
 
-    /** [fallbackAfterRejection]: the iPhone already offers USBMUX and NCM, so try that if it refuses. */
-    private fun beginReenumeration(device: UsbDevice, fallbackAfterRejection: Boolean = false) {
+    /**
+     * Asks the iPhone for a fresh CarPlay USB mode.
+     *
+     * [fallbackAfterRejection]: the iPhone already offers USBMUX and NCM, so try that if it refuses.
+     * [waitForFreshEnumeration]: the request is about the mode of a session DiPlay closed itself. That
+     * mode takes no new session until the iPhone resets USB (#335), so the stale enumeration is never
+     * opened; the wait is for the new node the reset produces.
+     */
+    private fun beginReenumeration(
+        device: UsbDevice,
+        fallbackAfterRejection: Boolean = false,
+        waitForFreshEnumeration: Boolean = false,
+    ) {
         phase = Phase.REENUMERATION
         reenumerationAttempts += 1
-        connectionDiagnostic("USB transition requested count=$reenumerationAttempts")
+        connectionDiagnostic(
+            "USB transition requested count=$reenumerationAttempts " +
+                (if (waitForFreshEnumeration) "previousSessionOnThisEnumeration=true" else ""),
+        )
         onStatus(CarPlayStatus.SelectingConfiguration)
         iphoneHost.requestCarPlayReenumerationAsync(device, executor) { transition ->
             when (transition) {
                 IphoneUsbHost.TransitionResult.ReenumerationRequested -> {
                     onStatus(CarPlayStatus.WaitingForReenumeration)
-                    mainHandler.post { watchReenumeration(device) }
+                    mainHandler.post { watchReenumeration(device, waitForFreshEnumeration) }
                 }
-                is IphoneUsbHost.TransitionResult.Failed -> if (fallbackAfterRejection) {
-                    connectionDiagnostic(
-                        "USB transition rejected; using the configuration the iPhone offers " +
-                            "error=${transition.error.message}",
-                    )
-                    mainHandler.post {
-                        if (!closed && phase == Phase.REENUMERATION) openDataPaths(device)
+                is IphoneUsbHost.TransitionResult.Failed -> when {
+                    waitForFreshEnumeration -> {
+                        // Opening DiPlay's own mode would take StartSession there, re-arm the
+                        // iPhone's CarPlay mode and hold off the USB reset indefinitely — which is
+                        // why a reconnect used to need the cable pulled. Watch for the reset.
+                        connectionDiagnostic(
+                            "USB transition rejected for DiPlay's own session; waiting for the " +
+                                "iPhone to reset USB error=${transition.error.message}",
+                        )
+                        onStatus(CarPlayStatus.WaitingForReenumeration)
+                        mainHandler.post { watchReenumeration(device, waitForFreshEnumeration = true) }
                     }
-                } else {
-                    fail(transition.error)
+                    fallbackAfterRejection -> {
+                        connectionDiagnostic(
+                            "USB transition rejected; using the configuration the iPhone offers " +
+                                "error=${transition.error.message}",
+                        )
+                        mainHandler.post {
+                            if (!closed && phase == Phase.REENUMERATION) openDataPaths(device)
+                        }
+                    }
+                    else -> fail(transition.error)
                 }
             }
         }
@@ -2050,24 +2118,75 @@ class CarPlayController(
 
     /**
      * Only a USB attach ended the wait for the iPhone to come back in CarPlay mode, and an iPhone
-     * that ignores the request never attaches again. Re-check the listed iPhone after 10 seconds
-     * so wired CarPlay can use the mode it already offers instead of waiting indefinitely.
+     * that ignores the request never attaches again. Re-check after 10 seconds so wired CarPlay can
+     * use the mode it already offers instead of waiting indefinitely.
+     *
+     * A re-enumeration always gives the iPhone a new device node, so the check also looks for one:
+     * the attach broadcast is not guaranteed, and waiting only for the old node left the session
+     * hanging when the iPhone had already come back.
      */
-    private fun watchReenumeration(device: UsbDevice) {
+    private fun watchReenumeration(
+        device: UsbDevice,
+        waitForFreshEnumeration: Boolean = false,
+        waitedMillis: Long = 0L,
+    ) {
         val attempt = reenumerationAttempts
         val generation = availabilityPollGeneration.get()
+        val step = if (waitForFreshEnumeration) PREVIOUS_SESSION_RESET_POLL_MILLIS
+            else REENUMERATION_WAIT_MILLIS
         mainHandler.postDelayed({
             if (closed || phase != Phase.REENUMERATION || attempt != reenumerationAttempts ||
                 generation != availabilityPollGeneration.get()) return@postDelayed
-            // An iPhone that left the bus is still re-enumerating: its attach ends the wait.
-            val listed = iphoneHost.discover().firstOrNull { it.deviceName == device.deviceName }
-                ?: return@postDelayed
+            val listed = iphoneHost.discover()
+            val fresh = listed.firstOrNull { it.deviceName != device.deviceName }
+            if (fresh != null) {
+                connectionDiagnostic(
+                    "USB re-enumeration produced a new device node; checking the iPhone",
+                )
+                requestIphonePermission(fresh)
+                return@postDelayed
+            }
+            val waited = waitedMillis + step
+            if (waitForFreshEnumeration) {
+                // The iPhone stays in CarPlay mode on the node of the session DiPlay closed and
+                // resets USB 30–150 s later; the node changes when it does. Left alone it can take
+                // minutes, so the request is sent again on every poll: an iPhone that has already
+                // left the mode re-enumerates as soon as it is asked, which is what turns a
+                // reconnect after a layout change back into seconds instead of minutes.
+                connectionDiagnostic(
+                    "USB reset for DiPlay's previous session not seen after ${waited}ms; asking again",
+                )
+                if (!executor.isShutdown) {
+                    iphoneHost.requestCarPlayReenumerationAsync(device, executor) { }
+                }
+                if (waited < PREVIOUS_SESSION_RESET_WAIT_MILLIS) {
+                    watchReenumeration(device, waitForFreshEnumeration = true, waitedMillis = waited)
+                } else {
+                    fail(IphoneUsbException.TimedOut(
+                        "The iPhone did not reset its USB session after DiPlay closed CarPlay on it",
+                    ))
+                }
+                return@postDelayed
+            }
+            val same = listed.firstOrNull { it.deviceName == device.deviceName }
+            if (same == null) {
+                // Off the bus, still re-enumerating. Its attach ends the wait, but that broadcast
+                // is not guaranteed, so keep checking for the node instead of waiting forever.
+                if (waited < REENUMERATION_LOST_WAIT_MILLIS) {
+                    watchReenumeration(device, waitForFreshEnumeration = false, waitedMillis = waited)
+                } else {
+                    fail(IphoneUsbException.TimedOut(
+                        "The iPhone left the USB bus and did not come back in CarPlay mode",
+                    ))
+                }
+                return@postDelayed
+            }
             connectionDiagnostic(
-                "USB transition unanswered after ${REENUMERATION_WAIT_MILLIS}ms count=$attempt; " +
+                "USB transition unanswered after ${waited}ms count=$attempt; " +
                     "checking the iPhone again",
             )
-            requestIphonePermission(listed)
-        }, REENUMERATION_WAIT_MILLIS)
+            requestIphonePermission(same)
+        }, step)
     }
 
     private fun onIphoneAttached(device: UsbDevice) {
@@ -2108,6 +2227,14 @@ class CarPlayController(
     private fun openDataPaths(device: UsbDevice) {
         phase = Phase.DATAPATHS
         wiredDeviceName = device.deviceName
+        wiredDevice = device
+        val startWatchdog = createWiredStartWatchdog()
+        wiredStartWatchdog?.terminate()
+        wiredStartWatchdog = startWatchdog
+        if (runCatching { loadPairRecord() }.getOrNull() != null) {
+            // A saved session can stall before StartSession, so start the first deadline here.
+            startWatchdog.bringUpStarted()
+        }
         debugLog("wired opening iPhone USB data paths")
         onStatus(CarPlayStatus.SelectingConfiguration)
         onStatus(CarPlayStatus.OpeningDataPaths)
@@ -2125,6 +2252,37 @@ class CarPlayController(
                 is IphoneUsbHost.Iap2SessionResult.Failed -> fail(result.error)
             }
         }
+    }
+
+    private fun createWiredStartWatchdog(): WiredStartWatchdog {
+        lateinit var startWatchdog: WiredStartWatchdog
+        startWatchdog = WiredStartWatchdog(
+            schedule = { delay, action ->
+                val future = runCatching {
+                    startupTimer.schedule({ action() }, delay, TimeUnit.MILLISECONDS)
+                }.getOrNull()
+                val cancel: () -> Unit = {
+                    future?.cancel(false)
+                    Unit
+                }
+                cancel
+            },
+            onTimeout = {
+                if (!closed && wiredStartWatchdog === startWatchdog) {
+                    // The next attempt must ask for a fresh CarPlay USB mode instead of reusing a
+                    // stale session that ignores the start request.
+                    wiredDeviceName?.let { WiredSessionMemory.started(appContext, it) }
+                    debugLog(
+                        "wired startup: no active AirPlay session within " +
+                            "${WiredStartWatchdog.TIMEOUT_MILLIS / 1000} s",
+                    )
+                    fail(IphoneUsbException.TimedOut(
+                        "The iPhone did not open CarPlay over USB in time",
+                    ))
+                }
+            },
+        )
+        return startWatchdog
     }
 
     private fun openNcm(device: UsbDevice): NcmUsbBridge {
@@ -2147,6 +2305,7 @@ class CarPlayController(
 
     private fun runStack(usbSession: Iap2UsbSession, ncm: NcmUsbBridge) {
         phase = Phase.CONTROL
+        wiredUsbSession = usbSession
         var ncmOwnedLocally = true
         try {
             if (closed) return
@@ -2207,31 +2366,10 @@ class CarPlayController(
                 deviceIdentifier = ncmHostMac.macString(),
             )
             onStatus(CarPlayStatus.RunningControl)
-            lateinit var startWatchdog: WiredStartWatchdog
-            startWatchdog = WiredStartWatchdog(
-                schedule = { delay, action ->
-                    val future = runCatching {
-                        startupTimer.schedule({ action() }, delay, TimeUnit.MILLISECONDS)
-                    }.getOrNull()
-                    val cancel: () -> Unit = {
-                        future?.cancel(false)
-                        Unit
-                    }
-                    cancel
-                },
-                onTimeout = {
-                    if (!closed && wiredStartWatchdog === startWatchdog) {
-                        debugLog(
-                            "wired start: no AirPlay session " +
-                                "${WiredStartWatchdog.TIMEOUT_MILLIS / 1000} s after carplay-start-session",
-                        )
-                        fail(IphoneUsbException.TimedOut(
-                            "The iPhone did not open CarPlay over USB in time",
-                        ))
-                    }
-                },
-            )
-            wiredStartWatchdog = startWatchdog
+            val startWatchdog = wiredStartWatchdog ?: createWiredStartWatchdog().also {
+                wiredStartWatchdog = it
+            }
+            startWatchdog.controlLoopStarted()
             debugLog(
                 "wired iAP2 runtime control starting " +
                     "location=${config.identification.locationInformationEnabled} " +
@@ -2247,7 +2385,7 @@ class CarPlayController(
                 onIncoming = ::onRouteFrame,
                 onProgress = { message ->
                     if (message.startsWith(START_SESSION_PROGRESS)) {
-                        wiredDeviceName?.let(WiredSessionMemory::started)
+                        wiredDeviceName?.let { WiredSessionMemory.started(appContext, it) }
                         startWatchdog.startSessionSent()
                     }
                     debugLog("wired $message")
@@ -2265,6 +2403,7 @@ class CarPlayController(
             if (!ncmOwnedLocally) vpnService?.detach()
             fail(error)
         } finally {
+            if (wiredUsbSession === usbSession) wiredUsbSession = null
             wiredStartWatchdog?.terminate()
             if (ncmOwnedLocally) ncm.close()
         }
@@ -2895,13 +3034,34 @@ class CarPlayController(
         }
     }
 
+    /**
+     * The step-by-step connection trace. Debug builds only: it writes a line for every phase and
+     * every USB stage, which is what a wired bring-up is diagnosed from — and what makes the log
+     * unreadable on the head unit.
+     */
     private fun connectionDiagnostic(message: String) {
+        if (!BuildConfig.DEBUG) return
         try {
             // The redactor reserves "PHONE " for private phone-side log captures.
             val diagnosticPhase = if (phase == Phase.IPHONE) "USB_DISCOVERY" else phase.name
-            debugLog("$CONNECTION_DIAGNOSTIC_PREFIX attempt=$diagnosticAttempt run=${diagnosticRun.get()} phase=$diagnosticPhase $message")
+            val line = "$CONNECTION_DIAGNOSTIC_PREFIX attempt=$diagnosticAttempt " +
+                "run=${diagnosticRun.get()} phase=$diagnosticPhase $message"
+            Log.i(IphoneCarPlayConfiguration.TAG, line)
+            uiListener?.onDebugLog(line)
         } catch (_: Exception) {
             // Optional diagnostics must not change transport or shutdown behavior.
+        }
+    }
+
+    /**
+     * The few connection lines a release build keeps: when a session was torn down, what the bus
+     * reset did, and when the stack came back on a freshly attached iPhone.
+     */
+    private fun connectionEvent(message: String) {
+        try {
+            Log.i(IphoneCarPlayConfiguration.TAG, message)
+        } catch (_: Exception) {
+            // Logging must not change transport or shutdown behavior.
         }
     }
 
@@ -3034,6 +3194,14 @@ class CarPlayController(
         private const val MAXIMUM_REENUMERATION_ATTEMPTS = 2
         /** An iPhone answers the mode request within about a second; one took six. */
         const val REENUMERATION_WAIT_MILLIS = 10_000L
+        /**
+         * iOS resets a wired session DiPlay ended itself 30–150 s after it ends (#335); that reset
+         * is the only way back when the iPhone refuses the mode request on that node.
+         */
+        private const val PREVIOUS_SESSION_RESET_WAIT_MILLIS = 150_000L
+        private const val PREVIOUS_SESSION_RESET_POLL_MILLIS = 5_000L
+        /** How long a re-enumerating iPhone may stay off the bus before the attempt is given up. */
+        private const val REENUMERATION_LOST_WAIT_MILLIS = 30_000L
         private const val START_SESSION_PROGRESS = "iap2 tx=0x4301"
         private const val EXECUTOR_CLOSE_TIMEOUT_MILLIS = 2_000L
         private const val ADAPTER_ADDRESS_PLACEHOLDER = "02:00:00:00:00:00"

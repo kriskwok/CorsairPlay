@@ -53,12 +53,4 @@ class WiredConfigurationActionTest {
         assertFalse(WiredConfigurationAction.fallbackAfterRejection(found = true, carPlayMode = true))
     }
 
-    @Test fun theMemoryMatchesOnlyTheSameEnumeration() {
-        WiredSessionMemory.clear()
-        assertFalse(WiredSessionMemory.startedOn("/dev/bus/usb/001/005"))
-        WiredSessionMemory.started("/dev/bus/usb/001/005")
-        assertTrue(WiredSessionMemory.startedOn("/dev/bus/usb/001/005"))
-        assertFalse(WiredSessionMemory.startedOn("/dev/bus/usb/001/006"))
-        WiredSessionMemory.clear()
-    }
 }

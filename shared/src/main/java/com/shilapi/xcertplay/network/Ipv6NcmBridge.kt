@@ -4,6 +4,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.shilapi.xcertplay.transport.EthernetIpv6Codec
 import com.shilapi.xcertplay.transport.NcmUsbBridge
+import com.shilapi.xcertplay.transport.UsbTrace
 import java.io.Closeable
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -69,15 +70,14 @@ class Ipv6NcmBridge(
                 peerMac = ipv6.sourceMac
                 if (!loggedInbound) {
                     loggedInbound = true
-                    Log.i(
-                        TAG,
+                    UsbTrace.log(
                         "ncm first inbound ipv6 bytes=${ipv6.payloadLength} " +
                             "peer=${ipv6.sourceMac.macString()}",
                     )
                 }
                 if (inboundLogBudget > 0) {
                     inboundLogBudget--
-                    Log.i(TAG, "ncm inbound ${frame.summary(ipv6.payloadOffset)}")
+                    UsbTrace.log("ncm inbound ${frame.summary(ipv6.payloadOffset)}")
                 }
                 output.write(frame, ipv6.payloadOffset, ipv6.payloadLength)
             }
@@ -107,25 +107,24 @@ class Ipv6NcmBridge(
                 val tunPacket = buffer.copyOf(length)
                 val ipv6 = EthernetIpv6Codec.addNeighborAdvertisementTargetMac(tunPacket, hostMac)
                 if (ipv6.size != tunPacket.size) {
-                    Log.i(TAG, "ncm added target-link-layer option to neighbor advertisement")
+                    UsbTrace.log("ncm added target-link-layer option to neighbor advertisement")
                 }
                 if (outboundLogBudget > 0) {
                     outboundLogBudget--
-                    Log.i(TAG, "ncm outbound ${ipv6.summary(0)}")
+                    UsbTrace.log("ncm outbound ${ipv6.summary(0)}")
                 }
                 val multicastMac = EthernetIpv6Codec.multicastDestinationMac(ipv6)
                 val mac = multicastMac ?: peerMac
                 if (mac == null) {
                     if (!loggedWaitingForPeer) {
                         loggedWaitingForPeer = true
-                        Log.i(TAG, "ncm deferred outbound unicast bytes=$length until peer MAC is learned")
+                        UsbTrace.log("ncm deferred outbound unicast bytes=$length until peer MAC is learned")
                     }
                     continue
                 }
                 if (!loggedOutbound) {
                     loggedOutbound = true
-                    Log.i(
-                        TAG,
+                    UsbTrace.log(
                         "ncm first outbound ipv6 bytes=$length destination=${mac.macString()} multicast=${multicastMac != null}",
                     )
                 }

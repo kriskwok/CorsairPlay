@@ -95,7 +95,7 @@ class NcmUsbBridge internal constructor(
             if (!bulkOutAccepted) notReadyFrames++
             if (!loggedWriteTimeout) {
                 loggedWriteTimeout = true
-                Log.i(IphoneCarPlayConfiguration.TAG, "ncm bulk-out not ready; retaining bridge for retry")
+                UsbTrace.log("ncm bulk-out not ready; retaining bridge for retry")
             }
             return@synchronized
         }
@@ -110,7 +110,7 @@ class NcmUsbBridge internal constructor(
         }
         if (loggedWriteTimeout) {
             loggedWriteTimeout = false
-            Log.i(IphoneCarPlayConfiguration.TAG, "ncm bulk-out became ready")
+            UsbTrace.log("ncm bulk-out became ready")
         }
     }
 
@@ -188,8 +188,7 @@ class NcmUsbBridge internal constructor(
             }
             if (!loggedFirst) {
                 loggedFirst = true
-                Log.i(
-                    IphoneCarPlayConfiguration.TAG,
+                UsbTrace.log(
                     "ncm status notification bytes=$transferred data=${buffer.copyOf(transferred).hex(32)}",
                 )
             }
@@ -435,8 +434,7 @@ class NcmUsbBridge internal constructor(
             val claimed = ArrayList<UsbInterface>(2)
             try {
                 val descriptorHostMac = readNcmHostMac(connection, function.control.id)
-                Log.i(
-                    IphoneCarPlayConfiguration.TAG,
+                UsbTrace.log(
                     "ncm descriptor hostMac=${descriptorHostMac?.macString() ?: "unavailable"}",
                 )
                 // Apple's Ethernet function exposes control and data as alternate settings of the
@@ -444,8 +442,7 @@ class NcmUsbBridge internal constructor(
                 val sameInterface = function.control.id == function.data.id
                 val first = if (sameInterface) function.data else function.control
                 val firstClaimed = retryUsbSetup { connection.claimInterface(first, true) }
-                Log.i(
-                    IphoneCarPlayConfiguration.TAG,
+                UsbTrace.log(
                     "claim iface=${first.id}/${first.alternateSetting} class=${first.interfaceClass}" +
                         " subclass=${first.interfaceSubclass} proto=${first.interfaceProtocol} ok=${firstClaimed != null}" +
                         " attempts=${firstClaimed ?: USB_SETUP_ATTEMPTS}",
@@ -458,8 +455,7 @@ class NcmUsbBridge internal constructor(
                 claimed.add(first)
                 if (!sameInterface) {
                     val dataClaimed = retryUsbSetup { connection.claimInterface(function.data, true) }
-                    Log.i(
-                        IphoneCarPlayConfiguration.TAG,
+                    UsbTrace.log(
                         "claim iface=${function.data.id}/${function.data.alternateSetting}" +
                             " class=${function.data.interfaceClass} ok=${dataClaimed != null}" +
                             " attempts=${dataClaimed ?: USB_SETUP_ATTEMPTS}",
@@ -472,8 +468,7 @@ class NcmUsbBridge internal constructor(
                     claimed.add(function.data)
                 }
                 val altSelected = retryUsbSetup { connection.setInterface(function.data) }
-                Log.i(
-                    IphoneCarPlayConfiguration.TAG,
+                UsbTrace.log(
                     "setInterface iface=${function.data.id}/${function.data.alternateSetting} ok=${altSelected != null}" +
                         " attempts=${altSelected ?: USB_SETUP_ATTEMPTS}",
                 )
@@ -482,8 +477,7 @@ class NcmUsbBridge internal constructor(
                         "Android could not select the NCM data alternate setting",
                     )
                 }
-                Log.i(
-                    IphoneCarPlayConfiguration.TAG,
+                UsbTrace.log(
                     "ncm status endpoint=${function.statusIn?.address?.let { "0x${it.toString(16)}" } ?: "none"}",
                 )
                 return NcmUsbBridge(

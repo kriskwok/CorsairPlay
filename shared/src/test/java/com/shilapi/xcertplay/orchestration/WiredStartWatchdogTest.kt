@@ -8,10 +8,12 @@ class WiredStartWatchdogTest {
     private var delay: Long? = null
     private var timer: (() -> Unit)? = null
     private var cancelled = 0
+    private var schedules = 0
     private var timeouts = 0
 
     private fun watchdog() = WiredStartWatchdog(
         schedule = { delayMillis, action ->
+            schedules++
             delay = delayMillis
             timer = action
             val cancel: () -> Unit = { cancelled++ }
@@ -53,6 +55,29 @@ class WiredStartWatchdogTest {
         assertEquals(0, timeouts)
         watch.startSessionSent()
         assertEquals(1, cancelled)
+    }
+
+    @Test fun aBringUpThatNeverReachesTheControlLoopTimesOut() {
+        val watch = watchdog()
+        watch.bringUpStarted()
+        assertEquals(WiredStartWatchdog.BRING_UP_TIMEOUT_MILLIS, delay)
+        timer!!()
+        assertEquals(1, timeouts)
+    }
+
+    @Test fun reachingTheControlLoopAndStartRequestEachRenewTheDeadline() {
+        val watch = watchdog()
+        watch.bringUpStarted()
+        assertEquals(1, schedules)
+        watch.controlLoopStarted()
+        assertEquals(2, schedules)
+        assertEquals(1, cancelled)
+        watch.startSessionSent()
+        assertEquals(3, schedules)
+        assertEquals(2, cancelled)
+        assertEquals(WiredStartWatchdog.TIMEOUT_MILLIS, delay)
+        timer!!()
+        assertEquals(1, timeouts)
     }
 
     @Test fun teardownCancelsTheLimit() {
