@@ -3,6 +3,7 @@ package com.shilapi.xcertplay.hud
 import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BydHudRouteStateTest {
@@ -229,11 +230,70 @@ class BydHudRouteStateTest {
     private fun utf8z(value: String): IntArray =
         (value.toByteArray(Charsets.UTF_8).map { it.toInt() and 0xff } + 0).toIntArray()
 
+    @Test
+    fun `a recalculation starts one generation and waits for a fresh distance`() {
+        val state = populatedState()
+        assertEquals(0L, state.progressGeneration)
+
+        // Rerouting (iAP2 state 5) invalidates the junction baseline even though the id is reused.
+        state.accept(BydHudRouteState.ROUTE_GUIDANCE_UPDATE, tlvs(tlv(0x01, 5)))
+        assertEquals(1L, state.progressGeneration)
+        assertTrue(state.progressPending)
+
+        // Adjacent rerouting frames are one cycle, and a distance inside it is still the old route's.
+        state.accept(BydHudRouteState.ROUTE_GUIDANCE_UPDATE, tlvs(tlv(0x01, 5), tlv(0x0a, 0, 0, 0, 30)))
+        assertEquals(1L, state.progressGeneration)
+        assertTrue(state.progressPending)
+
+        // RouteSet plus a distance completes it; the output then starts the new baseline.
+        state.accept(
+            BydHudRouteState.ROUTE_GUIDANCE_UPDATE,
+            tlvs(tlv(0x01, 1), tlv(0x0a, 0, 0, 0, 20), tlv(0x0d, 0, 1)),
+        )
+        assertEquals(false, state.progressPending)
+    }
+
+    @Test
+    fun `a brief NoRouteSet keeps the junction until guidance resumes`() {
+        var now = 0L
+        val state = populatedState({ now }, progressEndGraceNs = 2_500_000_000L)
+
+        state.accept(BydHudRouteState.ROUTE_GUIDANCE_UPDATE, tlvs(tlv(0x01, 0)))
+        assertTrue(state.progressEndPending)
+        assertNull(state.current())
+
+        now = 1_000_000_000L
+        val change = state.accept(
+            BydHudRouteState.ROUTE_GUIDANCE_UPDATE,
+            tlvs(tlv(0x01, 1), tlv(0x0a, 0, 0, 0, 10), tlv(0x0d, 0, 1)),
+        )
+        assertEquals(BydHudRouteChange.GUIDANCE, change)
+        assertEquals(false, state.progressEndPending)
+        assertEquals(10, state.current()!!.distanceMeters)
+    }
+
+    @Test
+    fun `a NoRouteSet that never resumes clears after its grace window`() {
+        var now = 0L
+        val state = populatedState({ now }, progressEndGraceNs = 2_500_000_000L)
+
+        state.accept(BydHudRouteState.ROUTE_GUIDANCE_UPDATE, tlvs(tlv(0x01, 0)))
+        now = 3_000_000_000L
+        assertNull(state.current())
+        assertEquals(false, state.progressEndPending)
+        assertEquals(false, state.routeActive())
+    }
+
     private fun populatedState(
         nanoTime: () -> Long = System::nanoTime,
         keepAcrossNoRoute: Boolean = false,
+        progressEndGraceNs: Long = 0,
     ): BydHudRouteState =
-        BydHudRouteState(nanoTime, keepAcrossNoRoute = keepAcrossNoRoute).also { state ->
+        BydHudRouteState(
+            nanoTime = nanoTime,
+            keepAcrossNoRoute = keepAcrossNoRoute,
+            progressEndGraceNs = progressEndGraceNs,
+        ).also { state ->
         state.accept(
             BydHudRouteState.ROUTE_GUIDANCE_MANEUVER_UPDATE,
             tlvs(tlv(0x01, 0, 1), tlv(0x03, 2), tlv(0x08, 0)),

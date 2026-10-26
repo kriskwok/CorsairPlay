@@ -15,6 +15,8 @@ object CarPlayGlance {
     data class Snapshot(
         val connected: Boolean = false,
         val maneuverType: Int? = null,
+        /** Stable id from iAP2 0x5201/0x5202, used to reset per-maneuver cluster progress. */
+        val maneuverIndex: Int = -1,
         /**
          * A route is still running even though [maneuverType] may be momentarily null (the iPhone's
          * empty current-maneuver list, or the stale window). Outputs that must not flicker — the
@@ -44,9 +46,17 @@ object CarPlayGlance {
         /** The separate iAP2 artist field. QQ Music and similar apps put the song name here. */
         val songArtist: String? = null,
         val playing: Boolean = false,
+        /** Local generation of explicit route/session boundaries; not a wire route id. */
+        val routeProgressGeneration: Long = 0,
+        /** Keep held cluster data until a calculation ends and a fresh maneuver distance arrives. */
+        val routeProgressPending: Boolean = false,
+        /** NoRouteSet is inside its short debounce window; preserve the cluster baseline. */
+        val routeEndPending: Boolean = false,
+        /** New accepted distance frames only; a ticker or lyric cannot confirm a distance rise. */
+        val distanceRevision: Long = 0,
     )
 
-    private val route = BydHudRouteState()
+    private val route = BydHudRouteState(progressEndGraceNs = 2_500_000_000L)
     private val song = ClusterSongState()
     private var connected = false
     private var last = Snapshot()
@@ -86,6 +96,13 @@ object CarPlayGlance {
         return current
     }
 
+    /**
+     * Read the latest published state without notifying listeners or advancing expiry. A consumer
+     * calls this under its own output lock so a delayed callback or timer cannot send older state
+     * than another consumer already has. Unlike [snapshot], this cannot notify recursively.
+     */
+    internal fun latestPublished(): Snapshot = synchronized(this) { last }
+
     fun onFrame(frame: Iap2Frame) {
         val changed = synchronized(this) {
             when (frame.messageId) {
@@ -118,6 +135,7 @@ object CarPlayGlance {
         val next = Snapshot(
             connected = connected,
             maneuverType = maneuver?.type,
+            maneuverIndex = maneuver?.index ?: -1,
             routeActive = route.routeActive(),
             // A dropped session is reported through `connected`, not as a guidance end.
             routeEnded = connected && route.routeEnded(),
@@ -131,6 +149,10 @@ object CarPlayGlance {
             songTitle = current?.line,
             songArtist = current?.artist,
             playing = current?.playing ?: false,
+            routeProgressGeneration = if (connected) route.progressGeneration else 0,
+            routeProgressPending = connected && route.progressPending,
+            routeEndPending = connected && route.progressEndPending,
+            distanceRevision = if (connected) route.distanceRevision else 0,
         )
         if (next == last) return null
         last = next
